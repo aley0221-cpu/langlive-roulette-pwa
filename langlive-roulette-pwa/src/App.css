@@ -1,0 +1,242 @@
+:root{
+  --bg0:#070a10;
+  --bg1:#0a1020;
+  --text:#e8f1ff;
+  --muted:#9bb0d1;
+
+  --cyan:#2ff3ff;
+  --cyan2:#10cfe0;
+
+  --red:#ff3b5c;
+  --black:#111522;
+  --green:#42ff8b;
+
+  --line: rgba(120, 160, 220, .18);
+  --shadow: 0 10px 24px rgba(0,0,0,.55);
+}
+
+*{box-sizing:border-box;}
+html,body,#root{height:100%;}
+
+body{
+  margin:0;
+  background: radial-gradient(1000px 600px at 30% -10%, rgba(47,243,255,.18), transparent 55%),
+              radial-gradient(900px 560px at 90% 15%, rgba(255,59,92,.14), transparent 60%),
+              linear-gradient(180deg, var(--bg0), var(--bg1));
+  color:var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+.app{
+  /* 讓內容鎖定一頁 */
+  height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header 變薄，省空間 */
+.header{
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(10,16,32,.92), rgba(10,16,32,.55));
+}
+.title{
+  text-align:center;
+  font-weight: 900;
+  letter-spacing: 1px;
+  font-size: 22px;
+  line-height: 1.1;
+  text-shadow: 0 0 18px rgba(47,243,255,.18);
+}
+
+/* 一頁模式：主內容高度固定，不允許整頁滾動 */
+.content.onepage{
+  flex: 1;
+  padding: 10px 10px 10px;
+  overflow: hidden; /* 關鍵：不往下滾 */
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto; 
+  gap: 8px;
+}
+
+/* 0 大按鈕縮一點但仍好按 */
+.btn0-top{
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(47,243,255,.35);
+  color: #dffcff;
+  font-size: 30px;
+  font-weight: 900;
+  background: linear-gradient(180deg, rgba(47,243,255,.20), rgba(16,207,224,.08));
+  box-shadow: 0 0 18px rgba(47,243,255,.18), var(--shadow);
+  cursor:pointer;
+}
+.btn0-top:active{ transform: translateY(1px); }
+
+/* 1-36 Grid：依螢幕高度自動縮 */
+.pad{ margin:0; }
+.pad-grid{
+  display:grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+/* 讓每顆按鈕高度跟著螢幕縮放（不超出 6.7 吋一頁） */
+.btn-num{
+  height: clamp(40px, 5.5vh, 52px);
+  border-radius: 12px;
+  border: 1px solid rgba(47,243,255,.22);
+  background: linear-gradient(180deg, rgba(47,243,255,.14), rgba(10,16,32,.75));
+  color: var(--text);
+  font-size: clamp(16px, 2.2vh, 20px);
+  font-weight: 900;
+  box-shadow: 0 0 12px rgba(47,243,255,.10);
+  cursor:pointer;
+}
+.btn-num:active{ transform: translateY(1px); }
+
+/* 操作鍵縮薄 */
+.actions{
+  display:flex;
+  gap: 10px;
+  margin:0;
+}
+.btn{
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  color: var(--text);
+  font-weight: 900;
+  padding: 10px 12px;
+  cursor:pointer;
+  box-shadow: var(--shadow);
+}
+.btn:disabled{ opacity:.45; cursor:not-allowed; }
+.action{
+  flex:1;
+  height: 46px;
+  font-size: 15px;
+}
+.secondary{
+  border-color: rgba(47,243,255,.25);
+  background: linear-gradient(180deg, rgba(47,243,255,.10), rgba(10,16,32,.7));
+}
+.danger{
+  border-color: rgba(255,59,92,.22);
+  background: linear-gradient(180deg, rgba(255,59,92,.10), rgba(10,16,32,.7));
+}
+
+/* 面板縮小、字體縮小，讓一頁放得下 */
+.panel{
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  overflow:hidden;
+}
+.panel-head{
+  padding: 8px 10px;
+  font-weight: 900;
+  letter-spacing: .5px;
+  font-size: 13px;
+  color: #ffffff;
+  background: linear-gradient(90deg, rgba(255,59,92,.20), rgba(47,243,255,.10));
+  border-bottom: 1px solid var(--line);
+}
+
+/* 最近(15)：改成可在面板內滾動（整頁不滾） */
+.recent{
+  padding: 6px 8px;
+  max-height: 20vh;          /* 關鍵：限制高度 */
+  overflow: auto;            /* 只滾這塊 */
+  -webkit-overflow-scrolling: touch;
+}
+.recent-row{
+  display:grid;
+  grid-template-columns: 1.2fr .6fr .6fr;
+  gap: 8px;
+  padding: 6px 6px;
+  border-bottom: 1px solid rgba(120,160,220,.12);
+}
+.recent-row:last-child{ border-bottom:none; }
+.recent-row.empty{ opacity: .45; }
+
+.cell{
+  display:flex;
+  align-items:center;
+  gap: 6px;
+  font-weight: 900;
+  font-size: 14px;
+}
+.cell.num .n{ font-size: 16px; }
+.cell.meta{ color: #d7e6ff; }
+
+.dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.20);
+}
+.dot.red{ background: var(--red); box-shadow: 0 0 12px rgba(255,59,92,.5); }
+.dot.black{ background: var(--black); box-shadow: 0 0 12px rgba(120,160,220,.18); }
+.dot.green{ background: var(--green); box-shadow: 0 0 12px rgba(66,255,139,.45); }
+
+/* 近15統計：縮成更緊湊 */
+.stats-grid{
+  padding: 8px 10px 10px;
+  display:grid;
+  gap: 8px;
+}
+.stat .k{
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-weight: 900;
+}
+.stat .v{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip{
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(120,160,220,.18);
+  background: rgba(255,255,255,.03);
+  font-weight: 900;
+  font-size: 12px;
+}
+.chip.red{ border-color: rgba(255,59,92,.28); }
+.chip.black{ border-color: rgba(120,160,220,.18); }
+.chip.green{ border-color: rgba(66,255,139,.25); }
+.chip.cyan{ border-color: rgba(47,243,255,.25); }
+
+/* 0統計：固定兩行、青色霓虹 */
+.cyanPanel{
+  border-color: rgba(47,243,255,.26);
+  background: linear-gradient(180deg, rgba(47,243,255,.07), rgba(10,16,32,.6));
+}
+.cyanHead{
+  background: linear-gradient(90deg, rgba(47,243,255,.28), rgba(47,243,255,.10));
+  text-shadow: 0 0 18px rgba(47,243,255,.22);
+}
+
+.zeroLines{
+  padding: 8px 10px 10px;
+  display:grid;
+  gap: 6px;
+}
+.zeroLine{
+  font-weight: 900;
+  font-size: 14px;
+  color: #e9fbff;
+}
+.zeroLine b{
+  margin-left: 6px;
+  color: #ffffff;
+  text-shadow: 0 0 14px rgba(47,243,255,.22);
+}
+.hint{ display:none; } /* 一頁版先隱藏提示文字，省空間 */

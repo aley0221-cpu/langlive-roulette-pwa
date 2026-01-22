@@ -1,0 +1,9 @@
+{
+  "name": "浪LIVE 輪盤紀錄",
+  "short_name": "浪LIVE輪盤",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070b12",
+  "theme_color": "#0b1220"
+}
