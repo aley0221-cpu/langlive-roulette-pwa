@@ -1,486 +1,230 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import "./App.css";
-import type { Spin, SpinSource } from "./core/types";
-import ReplayPage from "./pages/ReplayPage";
 
-type Color = "red" | "black" | "green";
-type Parity = "單" | "雙" | "-";
-type Range = "小" | "中" | "大" | "-";
+type ColorTag = "green" | "red" | "black";
 
-type Stats15 = {
-  total: number;
-  red: number;
-  black: number;
-  green: number; // == zeroCount
-  odd: number;
-  even: number;
-  small: number;
-  mid: number;
-  large: number;
-  zeroCount: number;
-  zeroMiss: number; // within last15 (0=最新就是0；無則=total)
-};
-
-const LS_KEY = "langlive_roulette_history_v1";
-
-function getMeta(n: number): { color: Color; parity: Parity; range: Range } {
-  if (n === 0) return { color: "green", parity: "-", range: "-" };
-
-  // 浪娛樂城規則：奇數紅、偶數黑
-  const color: Color = n % 2 === 1 ? "red" : "black";
-  const parity: Parity = n % 2 === 1 ? "單" : "雙";
-
-  let range: Range = "大";
-  if (n >= 1 && n <= 12) range = "小";
-  else if (n >= 13 && n <= 24) range = "中";
-
-  return { color, parity, range };
+function numberColor(n: number): ColorTag {
+  if (n === 0) return "green";
+  // 你規則：奇數紅、偶數黑
+  return n % 2 === 1 ? "red" : "black";
 }
 
-function calcStats15(last15: Spin[]): Stats15 {
-  const s: Stats15 = {
-    total: last15.length,
-    red: 0,
-    black: 0,
-    green: 0,
-    odd: 0,
-    even: 0,
-    small: 0,
-    mid: 0,
-    large: 0,
-    zeroCount: 0,
-    zeroMiss: 0,
-  };
-
-  for (let i = 0; i < last15.length; i++) {
-    const n = last15[i].n;
-    const m = getMeta(n);
-
-    if (m.color === "red") s.red++;
-    else if (m.color === "black") s.black++;
-    else {
-      s.green++;
-      s.zeroCount++;
-    }
-
-    if (n !== 0) {
-      if (m.parity === "單") s.odd++;
-      else s.even++;
-
-      if (m.range === "小") s.small++;
-      else if (m.range === "中") s.mid++;
-      else s.large++;
-    }
-  }
-
-  const idxZero = last15.findIndex((x) => x.n === 0);
-  s.zeroMiss = idxZero === -1 ? last15.length : idxZero;
-
-  return s;
+function sizeTag(n: number): string {
+  if (n === 0) return "—";
+  if (n <= 12) return "小";
+  if (n <= 24) return "中";
+  return "大";
 }
 
-function calcZeroStatsAll(history: Spin[]) {
-  // history[0] 最新
-  const zeroIdxs: number[] = [];
-  for (let i = 0; i < history.length; i++) if (history[i].n === 0) zeroIdxs.push(i);
-
-  const miss = zeroIdxs.length === 0 ? history.length : zeroIdxs[0];
-
-  let avgGap: number | null = null;
-  if (zeroIdxs.length >= 2) {
-    let sum = 0;
-    for (let i = 0; i < zeroIdxs.length - 1; i++) sum += zeroIdxs[i + 1] - zeroIdxs[i];
-    avgGap = sum / (zeroIdxs.length - 1);
-  }
-
-  return {
-    miss, // 目前已連續沒出 0（全歷史）
-    avgGap: avgGap === null ? null : Math.round(avgGap), // 平均幾次出 0
-    zeroCount: zeroIdxs.length,
-  };
+function oddEvenTag(n: number): string {
+  if (n === 0) return "—";
+  return n % 2 === 1 ? "單" : "雙";
 }
 
-function calcHotColdNumbers(history: Spin[], period: number = 240) {
-  // 取最近 period 期
-  const lastPeriod = history.slice(0, period);
-  
-  // 統計每個號碼出現次數（0-36）
-  const countMap = new Map<number, number>();
-  for (let i = 0; i <= 36; i++) {
-    countMap.set(i, 0);
-  }
-  
-  for (const item of lastPeriod) {
-    const n = item.n;
-    countMap.set(n, (countMap.get(n) || 0) + 1);
-  }
-  
-  // 轉換為陣列並排序（排除0，因為0有專門統計）
-  const numbers: Array<{ num: number; count: number }> = [];
-  for (let i = 1; i <= 36; i++) {
-    numbers.push({ num: i, count: countMap.get(i) || 0 });
-  }
-  
-  // 冷門號：出現次數最少的4個（次數相同時按號碼大小排序）
-  const coldNumbers = numbers
-    .sort((a, b) => {
-      if (a.count !== b.count) return a.count - b.count;
-      return a.num - b.num; // 次數相同時，號碼小的在前
-    })
-    .slice(0, 4)
-    .map(x => x.num);
-  
-  // 熱門號：出現次數最多的4個（次數相同時按號碼大小排序）
-  const hotNumbers = numbers
-    .sort((a, b) => {
-      if (a.count !== b.count) return b.count - a.count;
-      return a.num - b.num; // 次數相同時，號碼小的在前
-    })
-    .slice(0, 4)
-    .map(x => x.num);
-  
-  return {
-    cold: coldNumbers,
-    hot: hotNumbers,
-  };
-}
-
-function clampN(n: number) {
-  return Math.max(0, Math.min(36, n));
-}
-
-// 將舊的 RecordItem 轉換為新的 Spin 格式（向後兼容）
-function migrateToSpin(item: { n: number; ts: number }): Spin {
-  const n = clampN(item.n);
-  const meta = getMeta(n);
-  return {
-    id: `${item.ts}-${Math.random().toString(36).substr(2, 9)}`,
-    ts: item.ts,
-    n,
-    color: meta.color,
-    parity: meta.parity === "單" ? "odd" : meta.parity === "雙" ? "even" : "-",
-    size: meta.range === "小" ? "small" : meta.range === "中" ? "mid" : meta.range === "大" ? "large" : "-",
-    source: "live",
-  };
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
 export default function App() {
-  const [history, setHistory] = useState<Spin[]>(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      
-      // 檢查是否為舊格式（只有 n 和 ts）
-      if (parsed.length > 0 && !parsed[0].id) {
-        // 舊格式，需要遷移
-        return parsed
-          .filter((x) => typeof x?.n === "number" && typeof x?.ts === "number")
-          .map((x) => migrateToSpin(x));
-      }
-      
-      // 新格式，直接使用
-      return parsed
-        .filter((x) => typeof x?.n === "number" && typeof x?.ts === "number" && typeof x?.id === "string")
-        .map((x) => ({
-          ...x,
-          n: clampN(x.n),
-        }));
-    } catch {
-      return [];
-    }
-  });
+  const numbers1to36 = useMemo(() => Array.from({ length: 36 }, (_, i) => i + 1), []);
+  const [records, setRecords] = useState<number[]>([]);
+  const [lastClicked, setLastClicked] = useState<number | null>(null);
 
-  // persist
-  useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify(history));
-  }, [history]);
+  const addRecord = (n: number) => {
+    setRecords((prev) => [n, ...prev]);
+    setLastClicked(n);
+    // 小小高亮一下就退回（視覺節奏）
+    window.setTimeout(() => setLastClicked((cur) => (cur === n ? null : cur)), 650);
+  };
 
-  const last20 = useMemo(() => history.slice(0, 20), [history]);
-  const last120 = useMemo(() => history.slice(0, 120), [history]); // 用於統計
-  const last240 = useMemo(() => history.slice(0, 240), [history]); // 用於冷熱門號統計
-  const stats120 = useMemo(() => calcStats15(last120), [last120]); // 使用 calcStats15 但計算 120 期
-  const zeroAll = useMemo(() => calcZeroStatsAll(history), [history]);
-  const hotCold = useMemo(() => calcHotColdNumbers(last240, 240), [last240]);
+  const undo = () => setRecords((prev) => prev.slice(1));
+  const clearAll = () => setRecords([]);
 
-  const rows20 = useMemo(() => {
-    const filled: (Spin | null)[] = [...last20];
-    while (filled.length < 20) filled.push(null);
-    return filled;
-  }, [last20]);
+  // 圓球：最近 15 顆（你說上方「賭桌最近記錄」不要，這裡就是唯一顯示）
+  const balls = records.slice(0, 15);
 
-  function add(n: number, source: SpinSource = "live", batchId?: string) {
-    const num = clampN(n);
-    const meta = getMeta(num);
-    const item: Spin = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      ts: Date.now(),
-      n: num,
-      color: meta.color,
-      parity: meta.parity === "單" ? "odd" : meta.parity === "雙" ? "even" : "-",
-      size: meta.range === "小" ? "small" : meta.range === "中" ? "mid" : meta.range === "大" ? "large" : "-",
-      source,
-      batchId,
-    };
-    setHistory((prev) => [item, ...prev]);
-    // 震動反饋
-    if (navigator.vibrate) {
-      navigator.vibrate(10);
-    }
-  }
+  // 下方「最近紀錄(20)」
+  const recent20 = records.slice(0, 20);
 
-  // 長按連打功能（用於 1-36 按鈕）
-  const holdTimers = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
-  const holdDelays = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-
-  function handleNumButtonDown(n: number) {
-    // 立即觸發一次
-    const source: SpinSource = currentTab === "supplement" ? "replay" : "live";
-    add(n, source);
-
-    // 設置延遲：如果 150ms 後還沒放開，才開始連打
-    const delayTimer = setTimeout(() => {
-      // 開始長按連打（每 80ms 一次）
-      const intervalTimer = setInterval(() => {
-        add(n, source);
-      }, 80);
-      holdTimers.current.set(n, intervalTimer);
-      holdDelays.current.delete(n);
-    }, 150);
-
-    holdDelays.current.set(n, delayTimer);
-  }
-
-  function handleNumButtonUp(n: number) {
-    // 清除延遲定時器（如果還沒開始連打）
-    const delayTimer = holdDelays.current.get(n);
-    if (delayTimer) {
-      clearTimeout(delayTimer);
-      holdDelays.current.delete(n);
-    }
-
-    // 清除連打定時器（如果已經開始連打）
-    const intervalTimer = holdTimers.current.get(n);
-    if (intervalTimer) {
-      clearInterval(intervalTimer);
-      holdTimers.current.delete(n);
-    }
-  }
-
-  // 清理所有定時器（組件卸載時）
-  useEffect(() => {
-    return () => {
-      holdTimers.current.forEach((timer) => clearInterval(timer));
-      holdTimers.current.clear();
-      holdDelays.current.forEach((timer) => clearTimeout(timer));
-      holdDelays.current.clear();
-    };
-  }, []);
-
-  function undo() {
-    setHistory((prev) => prev.slice(1));
-  }
-
-  function clearAll() {
-    setHistory([]);
-  }
-
-
-  // 補記分頁的狀態已移到 ReplayPage 組件中
-
-  // 1-36 排列：6x6
-  const grid = useMemo(() => Array.from({ length: 36 }, (_, i) => i + 1), []);
-
-  // 分頁狀態
-  type TabType = "record" | "supplement" | "bet" | "dashboard";
-  const [currentTab, setCurrentTab] = useState<TabType>("supplement");
-
-  const tabs: Array<{ key: TabType; label: string }> = [
-    { key: "record", label: "紀錄" },
-    { key: "supplement", label: "補記" },
-    { key: "bet", label: "下注" },
-    { key: "dashboard", label: "儀表板" },
-  ];
+  // 這裡先給「近 120」的版面用假資料（之後你接統計邏輯再替換）
+  const mock120 = {
+    red: clamp(Math.floor(recent20.length * 0.5), 0, 120),
+    black: clamp(recent20.length - Math.floor(recent20.length * 0.5), 0, 120),
+    green: recent20.filter((n) => n === 0).length,
+    odd: clamp(Math.floor(recent20.length * 0.52), 0, 120),
+    even: clamp(recent20.length - Math.floor(recent20.length * 0.52), 0, 120),
+    small: clamp(Math.floor(recent20.length * 0.33), 0, 120),
+    mid: clamp(Math.floor(recent20.length * 0.33), 0, 120),
+    big: clamp(recent20.length - Math.floor(recent20.length * 0.66), 0, 120),
+  };
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="title-row">
-          <div className="title">
-            <span className="title-text">浪LIVE輪盤</span>
+    <div className="page">
+      <div className="tableFrame">
+        <div className="felt">
+          {/* 上方大 0（主角） */}
+          <div className="zeroHeroWrap">
+            <button
+              className={`zeroHeroBtn ${lastClicked === 0 ? "isHot" : ""}`}
+              onClick={() => addRecord(0)}
+              aria-label="record 0"
+            >
+              <span className="zeroHeroRing" />
+              <span className="zeroHeroNum">0</span>
+            </button>
           </div>
-          <div className="tabs-container">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                className={`tab-btn ${currentTab === tab.key ? "active" : ""}`}
-                onClick={() => setCurrentTab(tab.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
 
-      <main className="content onepage">
-        {currentTab === "supplement" ? (
-          /* 補記分頁 - 使用 ReplayPage 組件 */
-          <ReplayPage />
-        ) : currentTab === "record" ? (
-          /* 紀錄 / 輸入分頁 */
-          <>
-            {/* 1–36：6欄 */}
-            <section className="pad">
-              <div className="pad-grid">
-                {grid.map((n) => {
-                  const isOdd = n % 2 === 1;
-                  return (
-                    <button
-                      key={n}
-                      className={`btn-num ${isOdd ? "odd" : "even"}`}
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        handleNumButtonDown(n);
-                      }}
-                      onPointerUp={() => handleNumButtonUp(n)}
-                      onPointerLeave={() => handleNumButtonUp(n)}
-                      onPointerCancel={() => handleNumButtonUp(n)}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* 三顆主操作按鈕（同一排） */}
-            <section className="actions-main">
-              <button className="btn-action-undo" onClick={undo} disabled={history.length === 0}>
-                ← 復原
-              </button>
-              <button 
-                className="btn-action-zero" 
-                onClick={() => {
-                  add(0, "live");
-                }}
-              >
-                0
-              </button>
-              <button className="btn-action-clear" onClick={clearAll} disabled={history.length === 0}>
-                清空全部
-              </button>
-            </section>
-
-            {/* 最近紀錄(20) 和 近120期統計 並排 */}
-            <section className="panel two-col-panel">
-          {/* 左側：最近紀錄(20) */}
-          <div className="panel-col">
-            <div className="panel-head-row">
-              <div className="panel-head">最近紀錄 (20)</div>
-            </div>
-            <div className="recent">
-              {rows20.map((it, idx) => {
-                if (!it) {
-                  return (
-                    <div key={idx} className="recent-row empty">
-                      <div className="cell num">--</div>
-                      <div className="cell meta">--</div>
-                      <div className="cell meta">--</div>
-                    </div>
-                  );
-                }
-                const m = getMeta(it.n);
+          {/* 1–36：固定 6×6 */}
+          <div className="gridCard">
+            <div className="numberGrid" role="grid" aria-label="1 to 36">
+              {numbers1to36.map((n) => {
+                const c = numberColor(n);
+                const hot = lastClicked === n;
                 return (
-                  <div key={it.ts} className="recent-row">
-                    <div className="cell num">
-                      <span className={`dot ${m.color}`} />
-                      <span className="n">{it.n}</span>
-                    </div>
-                    <div className="cell meta">{m.parity}</div>
-                    <div className="cell meta">{m.range}</div>
-                  </div>
+                  <button
+                    key={n}
+                    className={`numBtn ${c} ${hot ? "isHot" : ""}`}
+                    onClick={() => addRecord(n)}
+                    aria-label={`record ${n}`}
+                  >
+                    <span className="numBtnInner">{n}</span>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 右側：近120期統計 */}
-          <div className="panel-col stats-col">
-            <div className="panel-head">近 120 期統計</div>
-            <div className="stats-lines">
-              <div className="stat-line">
-                <span className="k">顏色：</span>
-                <span className="v-chip red">紅 {stats120.red}</span>
-                <span className="v-chip black">黑 {stats120.black}</span>
-                <span className="v-chip green">綠 {stats120.zeroCount}</span>
-              </div>
-              <div className="stat-line">
-                <span className="k">單雙：</span>
-                <span className="v-chip cyan">單 {stats120.odd}</span>
-                <span className="v-chip cyan">雙 {stats120.even}</span>
-              </div>
-              <div className="stat-line">
-                <span className="k">大小：</span>
-                <span className="v-chip cyan">大 {stats120.large}</span>
-                <span className="v-chip cyan">中 {stats120.mid}</span>
-                <span className="v-chip cyan">小 {stats120.small}</span>
-              </div>
+          {/* 圓球最近號碼（唯一顯示最近記錄） */}
+          <div className="ballsBar">
+            <div className="ballsTrack" aria-label="recent balls">
+              {balls.length === 0 ? (
+                <div className="ballsEmpty">尚未記錄</div>
+              ) : (
+                balls.map((n, idx) => {
+                  const c = numberColor(n);
+                  return (
+                    <div key={`${n}-${idx}`} className={`ball ${c}`}>
+                      {n}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
-        </section>
 
-        {/* 0 統計：底部青色霓虹，分為兩欄 */}
-        <section className="panel cyanPanel">
-          <div className="panel-head cyanHead">0 統計</div>
-          <div className="zeroPanel-content">
-            {/* 左欄：0統計（不變） */}
-            <div className="zeroPanel-col">
-              <div className="zeroLines">
-                <div className="zeroLine">
-                  平均幾次出 0：
-                  <b>{zeroAll.avgGap === null ? "—" : `${zeroAll.avgGap} 次`}</b>
-                  <span className="hint">（至少要出現 2 次 0 才能計算）</span>
-                </div>
-                <div className="zeroLine">
-                  目前已連續沒出 0：<b>{zeroAll.miss} 期</b>
-                </div>
-              </div>
-            </div>
-            
-            {/* 右欄：冷熱門號統計 */}
-            <div className="zeroPanel-col hotCold-col">
-              <div className="hotCold-title">冷熱門號統計 (240期)</div>
-              <div className="hotCold-line">
-                <span className="hotCold-label">冷門號：</span>
-                <div className="hotCold-numbers">
-                  {hotCold.cold.map((n) => (
-                    <span key={n} className="hotCold-num cold">{n}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="hotCold-line">
-                <span className="hotCold-label">熱門號：</span>
-                <div className="hotCold-numbers">
-                  {hotCold.hot.map((n) => (
-                    <span key={n} className="hotCold-num hot">{n}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
+          {/* 功能鍵：復原 / 清空全部（保留你說的中間下方功能） */}
+          <div className="actionsRow">
+            <button className="actionBtn gold" onClick={undo} disabled={records.length === 0}>
+              復原
+            </button>
+            <button className="actionBtn red" onClick={clearAll} disabled={records.length === 0}>
+              清空全部
+            </button>
           </div>
-        </section>
 
-        <div style={{ height: 16 }} />
-          </>
-        ) : (
-          /* 其他分頁（下注、儀表板）待實現 */
-          <div style={{ padding: 20, textAlign: "center", color: "var(--muted)" }}>
-            {currentTab === "bet" ? "下注分頁（待實現）" : "儀表板分頁（待實現）"}
+          {/* 下方統計區（先做成你圖上的版面，數字可之後接真統計） */}
+          <div className="statsWrap">
+            <div className="statsGrid">
+              <div className="panel">
+                <div className="panelTitle">最近紀錄（20）</div>
+                <div className="recentList">
+                  {recent20.length === 0 ? (
+                    <div className="muted">—</div>
+                  ) : (
+                    recent20.map((n, idx) => (
+                      <div key={`${n}-${idx}`} className="recentRow">
+                        <div className={`dot ${numberColor(n)}`} />
+                        <div className="recentNum">{n}</div>
+                        <div className="recentMeta">
+                          <span className="pill">{oddEvenTag(n)}</span>
+                          <span className="pill">{sizeTag(n)}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panelTitle">近 120 期統計</div>
+
+                <div className="kv">
+                  <div className="kvRow">
+                    <div className="kvKey">顏色</div>
+                    <div className="kvVal">
+                      <span className="chip red">紅 {mock120.red}</span>
+                      <span className="chip black">黑 {mock120.black}</span>
+                      <span className="chip green">綠 {mock120.green}</span>
+                    </div>
+                  </div>
+
+                  <div className="kvRow">
+                    <div className="kvKey">單雙</div>
+                    <div className="kvVal">
+                      <span className="chip">單 {mock120.odd}</span>
+                      <span className="chip">雙 {mock120.even}</span>
+                    </div>
+                  </div>
+
+                  <div className="kvRow">
+                    <div className="kvKey">大小</div>
+                    <div className="kvVal">
+                      <span className="chip">小 {mock120.small}</span>
+                      <span className="chip">中 {mock120.mid}</span>
+                      <span className="chip">大 {mock120.big}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="panel span2">
+                <div className="panelTitle">0 統計</div>
+                <div className="zeroStats">
+                  <div className="zeroStatLine">
+                    <span className="muted">平均幾次出 0：</span>
+                    <span className="strong">—</span>
+                  </div>
+                  <div className="zeroStatLine">
+                    <span className="muted">目前已連續沒出 0：</span>
+                    <span className="strong">—</span>
+                    <span className="muted">期</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="panel span2">
+                <div className="panelTitle">冷熱門號統計（240期）</div>
+                <div className="hotCold">
+                  <div className="hcBlock">
+                    <div className="hcLabel muted">冷門號</div>
+                    <div className="hcNums">
+                      <span className="hcPill cool">21</span>
+                      <span className="hcPill cool">22</span>
+                      <span className="hcPill cool">23</span>
+                      <span className="hcPill cool">24</span>
+                    </div>
+                  </div>
+                  <div className="hcBlock">
+                    <div className="hcLabel muted">熱門號</div>
+                    <div className="hcNums">
+                      <span className="hcPill hot">1</span>
+                      <span className="hcPill hot">2</span>
+                      <span className="hcPill hot">7</span>
+                      <span className="hcPill hot">13</span>
+                    </div>
+                  </div>
+                  <div className="muted tiny">
+                    ※ 以上先做版面示意，你把統計接上去後再替換數字即可
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </main>
+
+          {/* 底部留白（像賭桌下緣） */}
+          <div className="tableBottomPad" />
+        </div>
+      </div>
     </div>
   );
 }
