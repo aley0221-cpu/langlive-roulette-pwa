@@ -364,8 +364,7 @@ export default function App() {
               <button 
                 className="btn-action-zero" 
                 onClick={() => {
-                  const source: SpinSource = currentTab === "supplement" ? "replay" : "live";
-                  add(0, source);
+                  add(0, "live");
                 }}
               >
                 0
