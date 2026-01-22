@@ -154,6 +154,14 @@ export default function ReplayPage() {
           <div className="supplement-value">{batchCount} 期</div>
         </div>
         <div className="supplement-section">
+          <button
+            className="btn-0-supplement"
+            onClick={() => onTap(0)}
+          >
+            0
+          </button>
+        </div>
+        <div className="supplement-section">
           <div className="supplement-label">快速連點模式：</div>
           <button
             className={`rapid-mode-toggle ${fastMode ? "on" : "off"}`}
@@ -169,18 +177,6 @@ export default function ReplayPage() {
 
       {/* 操作列 */}
       <section className="supplement-actions">
-        <button
-          className="btn-num btn-36-action"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            handleNumButtonDown(36);
-          }}
-          onPointerUp={() => handleNumButtonUp(36)}
-          onPointerLeave={() => handleNumButtonUp(36)}
-          onPointerCancel={() => handleNumButtonUp(36)}
-        >
-          36
-        </button>
         <button 
           className="btn action secondary" 
           onClick={undoLastSpin}

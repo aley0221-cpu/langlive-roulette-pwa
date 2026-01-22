@@ -54,8 +54,8 @@ export default function NumberPad({ onTap, fastMode = false }: NumberPadProps) {
     };
   }, []);
 
-  // 0-35 排列：6x6（0在第一格）
-  const grid = Array.from({ length: 36 }, (_, i) => i);
+  // 1-36 排列：6x6
+  const grid = Array.from({ length: 36 }, (_, i) => i + 1);
 
   return (
     <div className={fastMode ? "fast-mode" : ""}>
