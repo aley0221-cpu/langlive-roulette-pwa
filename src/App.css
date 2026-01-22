@@ -1,18 +1,18 @@
 :root{
-  --bg0:#070a10;
-  --bg1:#0a1020;
-  --text:#e8f1ff;
-  --muted:#9bb0d1;
+  --bg0:#ffffff;
+  --bg1:#f5f7fa;
+  --text:#1a1a1a;
+  --muted:#666666;
 
   --cyan:#2ff3ff;
   --cyan2:#10cfe0;
 
   --red:#ff3b5c;
-  --black:#111522;
+  --black:#2a2a2a;
   --green:#42ff8b;
 
-  --line: rgba(120, 160, 220, .18);
-  --shadow: 0 10px 24px rgba(0,0,0,.55);
+  --line: rgba(0, 0, 0, .1);
+  --shadow: 0 10px 24px rgba(0,0,0,.15);
 }
 
 *{box-sizing:border-box;}
@@ -20,8 +20,8 @@ html,body,#root{height:100%;}
 
 body{
   margin:0;
-  background: radial-gradient(1000px 600px at 30% -10%, rgba(47,243,255,.18), transparent 55%),
-              radial-gradient(900px 560px at 90% 15%, rgba(255,59,92,.14), transparent 60%),
+  background: radial-gradient(1000px 600px at 30% -10%, rgba(255,59,92,.08), transparent 55%),
+              radial-gradient(900px 560px at 90% 15%, rgba(47,243,255,.06), transparent 60%),
               linear-gradient(180deg, var(--bg0), var(--bg1));
   color:var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
@@ -293,7 +293,7 @@ body{
 .btn{
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: rgba(255,255,255,.03);
+  background: #ffffff;
   color: var(--text);
   font-weight: 900;
   padding: 6px 8px;
@@ -307,18 +307,18 @@ body{
   font-size: 12px;
 }
 .secondary{
-  border-color: rgba(47,243,255,.25);
-  background: linear-gradient(180deg, rgba(47,243,255,.10), rgba(10,16,32,.7));
+  border-color: rgba(47,243,255,.4);
+  background: linear-gradient(180deg, rgba(47,243,255,.15), rgba(47,243,255,.05));
 }
 .danger{
-  border-color: rgba(255,59,92,.22);
-  background: linear-gradient(180deg, rgba(255,59,92,.10), rgba(10,16,32,.7));
+  border-color: rgba(255,59,92,.4);
+  background: linear-gradient(180deg, rgba(255,59,92,.15), rgba(255,59,92,.05));
 }
 
 /* 面板縮小、字體縮小，讓一頁放得下 */
 .panel{
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+  background: linear-gradient(180deg, #ffffff, #f8f9fa);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   overflow:hidden;
@@ -329,8 +329,8 @@ body{
   font-weight: 900;
   letter-spacing: .3px;
   font-size: 12px;
-  color: #ffffff;
-  background: linear-gradient(90deg, rgba(255,59,92,.20), rgba(47,243,255,.10));
+  color: var(--text);
+  background: linear-gradient(90deg, rgba(255,59,92,.15), rgba(47,243,255,.1));
   border-bottom: 1px solid var(--line);
 }
 
@@ -356,8 +356,8 @@ body{
   font-weight: 900;
   letter-spacing: .3px;
   font-size: 12px;
-  color: #ffffff;
-  background: linear-gradient(90deg, rgba(255,59,92,.20), rgba(47,243,255,.10));
+  color: var(--text);
+  background: linear-gradient(90deg, rgba(255,59,92,.15), rgba(47,243,255,.1));
   border-bottom: 1px solid var(--line);
 }
 .panel-head-row .panel-head{
@@ -422,7 +422,7 @@ body{
   gap: 6px;
   padding: 4px 4px;
   min-height: 24px;          /* 確保每排有固定最小高度 */
-  border-bottom: 1px solid rgba(120,160,220,.12);
+  border-bottom: 1px solid rgba(0,0,0,.08);
 }
 .recent-row:last-child{ border-bottom:none; }
 .recent-row.empty{ opacity: .45; }
@@ -474,8 +474,8 @@ body{
 .v-chip{
   padding: 3px 5px;
   border-radius: 6px;
-  border: 1px solid rgba(120,160,220,.18);
-  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(0,0,0,.1);
+  background: rgba(0,0,0,.02);
   font-weight: 900;
   font-size: 10px;
 }
@@ -486,12 +486,12 @@ body{
 
 /* 0統計：固定兩行、青色霓虹，分為兩欄 */
 .cyanPanel{
-  border-color: rgba(47,243,255,.26);
-  background: linear-gradient(180deg, rgba(47,243,255,.07), rgba(10,16,32,.6));
+  border-color: rgba(47,243,255,.3);
+  background: linear-gradient(180deg, rgba(47,243,255,.12), rgba(47,243,255,.05));
 }
 .cyanHead{
-  background: linear-gradient(90deg, rgba(47,243,255,.28), rgba(47,243,255,.10));
-  text-shadow: 0 0 18px rgba(47,243,255,.22);
+  background: linear-gradient(90deg, rgba(47,243,255,.2), rgba(47,243,255,.1));
+  color: var(--text);
 }
 
 .zeroPanel-content{
@@ -590,7 +590,7 @@ body{
   -webkit-overflow-scrolling: touch;
 }
 .supplement-panel{
-  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  background: linear-gradient(180deg, #ffffff, #f8f9fa);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
@@ -640,7 +640,7 @@ body{
   padding: 0 16px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: rgba(255,255,255,.05);
+  background: #ffffff;
   color: var(--muted);
   font-size: 14px;
   font-weight: 700;
@@ -648,18 +648,17 @@ body{
   transition: all 0.2s;
 }
 .rapid-mode-toggle:hover{
-  background: rgba(255,255,255,.08);
+  background: #f5f7fa;
   color: var(--text);
 }
 .rapid-mode-toggle.on{
-  background: linear-gradient(180deg, rgba(47,243,255,.20), rgba(10,16,32,.8));
+  background: linear-gradient(180deg, rgba(47,243,255,.2), rgba(47,243,255,.1));
   border-color: rgba(47,243,255,.5);
   color: var(--cyan);
   box-shadow: 0 0 12px rgba(47,243,255,.3);
-  text-shadow: 0 0 8px rgba(47,243,255,.4);
 }
 .rapid-mode-toggle.off{
-  background: rgba(255,255,255,.05);
+  background: #ffffff;
   border-color: var(--line);
   color: var(--muted);
 }
