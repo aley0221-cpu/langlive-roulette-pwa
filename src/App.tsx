@@ -299,8 +299,8 @@ export default function App() {
 
   // 補記分頁的狀態已移到 ReplayPage 組件中
 
-  // 1–36 排列：6x6（照你圖）
-  const grid = useMemo(() => Array.from({ length: 36 }, (_, i) => i + 1), []);
+  // 0-35 排列：6x6（0在第一格）
+  const grid = useMemo(() => Array.from({ length: 36 }, (_, i) => i), []);
 
   // 分頁狀態
   type TabType = "record" | "supplement" | "bet" | "dashboard";
@@ -332,15 +332,6 @@ export default function App() {
               </button>
             ))}
           </div>
-          <button 
-            className="btn-0-header" 
-            onClick={() => {
-              const source: SpinSource = currentTab === "supplement" ? "replay" : "live";
-              add(0, source);
-            }}
-          >
-            0
-          </button>
         </div>
       </header>
 
@@ -374,6 +365,18 @@ export default function App() {
 
             {/* 操作 */}
             <section className="actions">
+              <button
+                className="btn-num btn-36-action"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleNumButtonDown(36);
+                }}
+                onPointerUp={() => handleNumButtonUp(36)}
+                onPointerLeave={() => handleNumButtonUp(36)}
+                onPointerCancel={() => handleNumButtonUp(36)}
+              >
+                36
+              </button>
               <button className="btn action secondary" onClick={undo} disabled={history.length === 0}>
                 ← 復原
               </button>

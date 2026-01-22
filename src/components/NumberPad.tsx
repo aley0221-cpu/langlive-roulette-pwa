@@ -54,24 +54,12 @@ export default function NumberPad({ onTap, fastMode = false }: NumberPadProps) {
     };
   }, []);
 
-  // 1–36 排列：6x6
-  const grid = Array.from({ length: 36 }, (_, i) => i + 1);
+  // 0-35 排列：6x6（0在第一格）
+  const grid = Array.from({ length: 36 }, (_, i) => i);
 
   return (
     <div className={fastMode ? "fast-mode" : ""}>
-      {/* 0 按鈕：綠色、大顆 */}
-      <section className="pad">
-        <div className="pad-zero">
-          <button
-            className="btn-0-large"
-            onClick={() => onTap(0)}
-          >
-            0
-          </button>
-        </div>
-      </section>
-
-      {/* 1–36：6x6 網格 */}
+      {/* 0-35：6x6 網格（0在第一格） */}
       <section className="pad">
         <div className="pad-grid">
           {grid.map((n) => (
