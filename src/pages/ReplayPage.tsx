@@ -4,7 +4,6 @@ import { db } from "../core/engine";
 import NumberPad from "../components/NumberPad";
 
 const LS_BATCH_ID = "langlive_roulette_batch_id_v1";
-const LS_RAPID_MODE = "langlive_roulette_rapid_mode_v1";
 
 export default function ReplayPage() {
   const [batchId, setBatchId] = useState(() => {
@@ -22,15 +21,6 @@ export default function ReplayPage() {
     }
   });
 
-  const [fastMode, setFastMode] = useState(() => {
-    try {
-      const saved = localStorage.getItem(LS_RAPID_MODE);
-      return saved === "true";
-    } catch {
-      return false;
-    }
-  });
-
   const [batchCount, setBatchCount] = useState(0);
   const [spinsUpdated, setSpinsUpdated] = useState(0); // 用於觸發重新計算
   const [nextSpinIndex, setNextSpinIndex] = useState(1); // 下一期數
@@ -39,11 +29,6 @@ export default function ReplayPage() {
   useEffect(() => {
     localStorage.setItem(LS_BATCH_ID, batchId);
   }, [batchId]);
-
-  // 保存快速連點模式
-  useEffect(() => {
-    localStorage.setItem(LS_RAPID_MODE, fastMode.toString());
-  }, [fastMode]);
 
   // 計算本段已補期數和下一期數
   useEffect(() => {
@@ -77,9 +62,9 @@ export default function ReplayPage() {
   }, []);
 
   const onTap = async (n: number) => {
-    await addReplaySpin(n, batchId, fastMode);
-    // 快速連點模式關閉時才顯示震動反饋
-    if (!fastMode && navigator.vibrate) {
+    await addReplaySpin(n, batchId, false);
+    // 顯示震動反饋
+    if (navigator.vibrate) {
       navigator.vibrate(10);
     }
     // 觸發重新計算
@@ -128,15 +113,6 @@ export default function ReplayPage() {
           <div className="supplement-label">下一期數：</div>
           <div className="supplement-value">第 {nextSpinIndex} 期</div>
         </div>
-        <div className="supplement-section">
-          <div className="supplement-label">快速連點模式：</div>
-          <button
-            className={`rapid-mode-toggle ${fastMode ? "on" : "off"}`}
-            onClick={() => setFastMode(!fastMode)}
-          >
-            {fastMode ? "開" : "關"}
-          </button>
-        </div>
       </section>
 
       {/* 0 號按鈕（獨立顯示在數字盤上方） */}
@@ -150,7 +126,7 @@ export default function ReplayPage() {
       </section>
 
       {/* 數字盤（固定 6 欄，1-36） */}
-      <NumberPad onTap={onTap} fastMode={fastMode} />
+      <NumberPad onTap={onTap} fastMode={false} />
 
       {/* 操作列（只有復原按鈕） */}
       <section className="supplement-actions">
