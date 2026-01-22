@@ -124,3 +124,27 @@ export async function getReplayCountByBatchId(batchId: string): Promise<number> 
     request.onerror = () => reject(request.error);
   });
 }
+
+// 獲取最後一個 spin 的 spinIndex（無論是 live 還是 replay）
+export async function getLastSpinIndex(): Promise<number> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], "readonly");
+    const store = transaction.objectStore(STORE_NAME);
+    const index = store.index("ts");
+    const request = index.openCursor(null, "prev"); // 降序，獲取最新的
+
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+      if (cursor) {
+        const spin = cursor.value as Spin;
+        // 如果有 spinIndex，返回它；否則返回 0（表示從頭開始）
+        resolve(spin.spinIndex ?? 0);
+      } else {
+        // 沒有資料，從 0 開始
+        resolve(0);
+      }
+    };
+    request.onerror = () => reject(request.error);
+  });
+}

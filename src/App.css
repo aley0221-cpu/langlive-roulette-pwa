@@ -616,7 +616,7 @@ body{
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(10,16,32,.8);
+  background: #ffffff;
   color: var(--text);
   font-size: 14px;
   font-weight: 500;
@@ -666,9 +666,19 @@ body{
   transform: translateY(1px);
 }
 
-/* 補記分頁：0 按鈕（在快速連點模式前面）- 綠色底色、白色文字、最大 */
+/* 補記分頁：0 號按鈕獨立顯示區域（在數字盤上方） */
+.supplement-zero-section{
+  margin: 12px 0;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 補記分頁：0 按鈕 - 綠色底色、白色文字、略大於一般數字 */
 .btn-0-supplement{
   width: 100%;
+  max-width: 200px;
   height: 56px;
   border-radius: 12px;
   border: 2px solid rgba(66,255,139,.6);
@@ -719,13 +729,13 @@ body{
   transform: translateY(2px);
 }
 
-/* 補記分頁：底部操作列 */
+/* 補記分頁：底部操作列（只有復原按鈕） */
 .supplement-actions{
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
-  padding: 8px 0;
+  padding: 12px 0;
   margin-top: 4px;
   flex-shrink: 0; /* 不壓縮 */
 }

@@ -9,4 +9,5 @@ export interface Spin {
   size: "small" | "mid" | "large" | "-";
   source: SpinSource; // replay = 補記
   batchId?: string;   // 補記段落
+  spinIndex?: number; // 期數（自動分配，補記時自動接續上一期）
 }

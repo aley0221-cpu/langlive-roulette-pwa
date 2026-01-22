@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { addReplaySpin } from "../core/engine";
+import { addReplaySpin, getNextSpinIndex } from "../core/engine";
 import { db } from "../core/engine";
 import NumberPad from "../components/NumberPad";
 
@@ -33,6 +33,7 @@ export default function ReplayPage() {
 
   const [batchCount, setBatchCount] = useState(0);
   const [spinsUpdated, setSpinsUpdated] = useState(0); // 用於觸發重新計算
+  const [nextSpinIndex, setNextSpinIndex] = useState(1); // 下一期數
 
   // 保存 Batch ID
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function ReplayPage() {
     localStorage.setItem(LS_RAPID_MODE, fastMode.toString());
   }, [fastMode]);
 
-  // 計算本段已補期數
+  // 計算本段已補期數和下一期數
   useEffect(() => {
     const updateCount = async () => {
       if (!batchId) {
@@ -54,6 +55,10 @@ export default function ReplayPage() {
       try {
         const count = await db.spins.getReplayCountByBatchId(batchId);
         setBatchCount(count);
+        
+        // 更新下一期數
+        const nextIndex = await getNextSpinIndex();
+        setNextSpinIndex(nextIndex);
       } catch (error) {
         console.error("Failed to get batch count:", error);
         setBatchCount(0);
@@ -79,6 +84,10 @@ export default function ReplayPage() {
     }
     // 觸發重新計算
     setSpinsUpdated(prev => prev + 1);
+    
+    // 更新下一期數
+    const nextIndex = await getNextSpinIndex();
+    setNextSpinIndex(nextIndex);
   };
 
   const undoLastSpin = async () => {
@@ -116,12 +125,8 @@ export default function ReplayPage() {
           <div className="supplement-value">{batchCount} 期</div>
         </div>
         <div className="supplement-section">
-          <button
-            className="btn-0-supplement"
-            onClick={() => onTap(0)}
-          >
-            0
-          </button>
+          <div className="supplement-label">下一期數：</div>
+          <div className="supplement-value">第 {nextSpinIndex} 期</div>
         </div>
         <div className="supplement-section">
           <div className="supplement-label">快速連點模式：</div>
@@ -134,21 +139,28 @@ export default function ReplayPage() {
         </div>
       </section>
 
-      {/* 數字盤（共用元件） */}
+      {/* 0 號按鈕（獨立顯示在數字盤上方） */}
+      <section className="supplement-zero-section">
+        <button
+          className="btn-0-supplement"
+          onClick={() => onTap(0)}
+        >
+          0
+        </button>
+      </section>
+
+      {/* 數字盤（固定 6 欄，1-36） */}
       <NumberPad onTap={onTap} fastMode={fastMode} />
 
-      {/* 操作列 */}
+      {/* 操作列（只有復原按鈕） */}
       <section className="supplement-actions">
         <button 
-          className="btn action secondary" 
+          className="btn-action-undo" 
           onClick={undoLastSpin}
-          disabled={batchCount === 0} // 如果沒有補記記錄，禁用復原按鈕
+          disabled={batchCount === 0}
         >
           ← 復原
         </button>
-        <div className="rapid-mode-status">
-          快速連點：<span className={fastMode ? "status-on" : "status-off"}>{fastMode ? "開" : "關"}</span>
-        </div>
       </section>
     </div>
   );

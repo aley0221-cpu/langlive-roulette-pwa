@@ -1,5 +1,5 @@
 import type { Spin } from "./types";
-import { addSpin, getAllSpins, deleteSpin, getLastReplaySpin, getReplayCountByBatchId } from "./db";
+import { addSpin, getAllSpins, deleteSpin, getLastReplaySpin, getReplayCountByBatchId, getLastSpinIndex } from "./db";
 
 // 資料庫介面（使用 IndexedDB）
 export const db = {
@@ -47,6 +47,10 @@ export async function addReplaySpin(
   batchId: string,
   _fastMode: boolean = false
 ): Promise<Spin> {
+  // 獲取最後一個 spinIndex，自動接續下一期
+  const lastSpinIndex = await getLastSpinIndex();
+  const nextSpinIndex = lastSpinIndex + 1;
+
   const spin: Spin = {
     id: crypto.randomUUID(),
     ts: Date.now(),
@@ -58,7 +62,8 @@ export async function addReplaySpin(
       n <= 12 ? "small" :
       n <= 24 ? "mid" : "large",
     source: "replay",
-    batchId
+    batchId,
+    spinIndex: nextSpinIndex
   };
 
   await db.spins.add(spin);
@@ -72,6 +77,12 @@ export async function addReplaySpin(
   notifySubscribers();
 
   return spin;
+}
+
+// 獲取最後一個 spinIndex（用於顯示下一期數）
+export async function getNextSpinIndex(): Promise<number> {
+  const lastSpinIndex = await getLastSpinIndex();
+  return lastSpinIndex + 1;
 }
 
 // db 已在上面定義並導出
