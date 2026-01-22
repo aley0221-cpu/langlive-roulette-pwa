@@ -397,3 +397,52 @@ body{
   .numberGrid{ gap: 7px; }
   .zeroHeroBtn{ width: 86px; height: 86px; }
 }
+
+/* ===== Samsung Galaxy A16 專用尺寸優化 ===== */
+@media (max-width: 420px) {
+
+  /* 1–36 數字格 */
+  .numberGrid {
+    gap: 8px;
+  }
+
+  .numBtn {
+    height: 64px;        /* 放大，拇指好按 */
+  }
+
+  .numBtnInner {
+    font-size: 23px;
+  }
+
+  /* 中央大 0 */
+  .zeroHeroBtn {
+    width: 96px;
+    height: 96px;
+  }
+
+  .zeroHeroNum {
+    font-size: 36px;
+  }
+
+  /* 圓球最近記錄 */
+  .ball {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  /* 功能鍵 */
+  .actionBtn {
+    height: 56px;
+    font-size: 19px;
+  }
+
+  /* 統計區字體微調 */
+  .panelTitle {
+    font-size: 16px;
+  }
+
+  .recentNum {
+    font-size: 18px;
+  }
+}
