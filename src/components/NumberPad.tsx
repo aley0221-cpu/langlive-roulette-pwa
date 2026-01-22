@@ -64,11 +64,10 @@ export default function NumberPad({ onTap, fastMode = false }: NumberPadProps) {
         <div className="pad-grid">
           {grid.map((n) => {
             const isOdd = n % 2 === 1;
-            const isFirstRow = n <= 6;
             return (
               <button
                 key={n}
-                className={`btn-num ${isOdd ? "odd" : "even"} ${isFirstRow ? "first-row" : ""}`}
+                className={`btn-num ${isOdd ? "odd" : "even"}`}
                 onPointerDown={(e) => {
                   e.preventDefault();
                   handleNumButtonDown(n);
