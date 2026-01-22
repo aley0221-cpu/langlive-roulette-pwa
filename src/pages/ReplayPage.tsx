@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { addReplaySpin } from "../core/engine";
 import { db } from "../core/engine";
 import NumberPad from "../components/NumberPad";
@@ -71,9 +71,6 @@ export default function ReplayPage() {
     return () => window.removeEventListener("spins-updated", handleUpdate);
   }, []);
 
-  const holdTimers = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
-  const holdDelays = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-
   const onTap = async (n: number) => {
     await addReplaySpin(n, batchId, fastMode);
     // 快速連點模式關閉時才顯示震動反饋
@@ -82,41 +79,6 @@ export default function ReplayPage() {
     }
     // 觸發重新計算
     setSpinsUpdated(prev => prev + 1);
-  };
-
-  const handleNumButtonDown = (n: number) => {
-    // 立即觸發一次
-    onTap(n);
-
-    if (!fastMode) return;
-
-    // 設置延遲：如果 150ms 後還沒放開，才開始連打
-    const delayTimer = setTimeout(() => {
-      // 開始長按連打（每 80ms 一次）
-      const intervalTimer = setInterval(() => {
-        onTap(n);
-      }, 80);
-      holdTimers.current.set(n, intervalTimer);
-      holdDelays.current.delete(n);
-    }, 150);
-
-    holdDelays.current.set(n, delayTimer);
-  };
-
-  const handleNumButtonUp = (n: number) => {
-    // 清除延遲定時器（如果還沒開始連打）
-    const delayTimer = holdDelays.current.get(n);
-    if (delayTimer) {
-      clearTimeout(delayTimer);
-      holdDelays.current.delete(n);
-    }
-
-    // 清除連打定時器（如果已經開始連打）
-    const intervalTimer = holdTimers.current.get(n);
-    if (intervalTimer) {
-      clearInterval(intervalTimer);
-      holdTimers.current.delete(n);
-    }
   };
 
   const undoLastSpin = async () => {
