@@ -69,14 +69,9 @@ body{
   white-space: nowrap;
   flex-shrink: 0;
 }
-.title-brand{
-  color: var(--red);
-  font-weight: 900;
-  text-shadow: 0 0 12px rgba(255,59,92,.4);
-}
 .title-text{
   color: var(--text);
-  font-weight: 600;
+  font-weight: 900;
 }
 .tabs-container{
   display: flex;
@@ -122,22 +117,26 @@ body{
 .tab-btn:active{
   transform: translateY(1px);
 }
+/* 0號按鈕：綠色底色、白色文字、最大、固定最上方 */
 .btn-0-header{
-  min-width: 50px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid rgba(66,255,139,.5);
-  background: linear-gradient(180deg, rgba(66,255,139,.28), rgba(22,120,78,.25));
+  min-width: 60px;
+  height: 48px;
+  border-radius: 12px;
+  border: 2px solid rgba(66,255,139,.6);
+  background: var(--green);
   color: #ffffff;
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 900;
-  box-shadow: 0 0 14px rgba(66,255,139,.4);
+  box-shadow: 0 0 20px rgba(66,255,139,.5);
   cursor:pointer;
   flex-shrink: 0;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .btn-0-header:active{
-  box-shadow: 0 0 18px rgba(66,255,139,.6);
+  box-shadow: 0 0 25px rgba(66,255,139,.7);
   transform: translateY(1px);
 }
 
@@ -159,22 +158,45 @@ body{
   gap: 6px;
 }
 
-/* 讓每顆按鈕高度跟著螢幕縮放（不超出 6.7 吋一頁） */
+/* 1-36號按鈕：方形、放大、統一綠色邊框 */
 .btn-num{
-  height: clamp(32px, 4.2vh, 42px);
-  border-radius: 10px;
-  border: 1px solid rgba(47,243,255,.22);
-  background: linear-gradient(180deg, rgba(47,243,255,.14), rgba(10,16,32,.75));
-  color: var(--text);
-  font-size: clamp(13px, 1.8vh, 16px);
+  aspect-ratio: 1; /* 方形按鈕 */
+  min-height: clamp(48px, 6vh, 60px);
+  border-radius: 12px;
+  border: 2px solid rgba(66,255,139,.5); /* 統一綠色邊框 */
+  color: #ffffff;
+  font-size: clamp(18px, 2.5vh, 24px);
   font-weight: 900;
-  box-shadow: 0 0 10px rgba(47,243,255,.10);
   cursor:pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s;
 }
-.btn-num:active{ transform: translateY(1px); }
+
+/* 第一排（1-6）：藍色底色、紅色文字、紅色發光（優先級最高） */
+.btn-num.first-row{
+  background: rgba(47,243,255,.4) !important;
+  color: var(--red) !important;
+  text-shadow: 0 0 12px rgba(255,59,92,.8);
+  box-shadow: 0 0 16px rgba(255,59,92,.4);
+}
+
+/* 奇數（單）：紅色底色、白色文字 */
+.btn-num.odd:not(.first-row){
+  background: var(--red);
+  box-shadow: 0 0 12px rgba(255,59,92,.3);
+}
+
+/* 偶數（雙）：黑色底色、白色文字 */
+.btn-num.even:not(.first-row){
+  background: var(--black);
+  box-shadow: 0 0 12px rgba(120,160,220,.2);
+}
+
+.btn-num:active{ 
+  transform: translateY(2px) scale(0.98);
+}
 
 /* 操作鍵縮薄 */
 .actions{
@@ -579,17 +601,17 @@ body{
   transform: translateY(1px);
 }
 
-/* 補記分頁：0 按鈕（在快速連點模式前面） */
+/* 補記分頁：0 按鈕（在快速連點模式前面）- 綠色底色、白色文字、最大 */
 .btn-0-supplement{
   width: 100%;
-  height: 48px;
-  border-radius: 10px;
-  border: 2px solid rgba(66,255,139,.5);
-  background: linear-gradient(180deg, rgba(66,255,139,.28), rgba(22,120,78,.25));
+  height: 56px;
+  border-radius: 12px;
+  border: 2px solid rgba(66,255,139,.6);
+  background: var(--green);
   color: #ffffff;
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 900;
-  box-shadow: 0 0 14px rgba(66,255,139,.4);
+  box-shadow: 0 0 20px rgba(66,255,139,.5);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -598,7 +620,7 @@ body{
   flex-shrink: 0;
 }
 .btn-0-supplement:active{
-  box-shadow: 0 0 18px rgba(66,255,139,.6);
+  box-shadow: 0 0 25px rgba(66,255,139,.7);
   transform: translateY(1px);
 }
 

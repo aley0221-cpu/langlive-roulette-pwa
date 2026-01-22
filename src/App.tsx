@@ -318,8 +318,7 @@ export default function App() {
       <header className="header">
         <div className="title-row">
           <div className="title">
-            <span className="title-brand">浪LIVE</span>
-            <span className="title-text"> 輪盤</span>
+            <span className="title-text">浪輪盤</span>
           </div>
           <div className="tabs-container">
             {tabs.map((tab) => (
@@ -354,21 +353,25 @@ export default function App() {
             {/* 1–36：6欄 */}
             <section className="pad">
               <div className="pad-grid">
-                {grid.map((n) => (
-                  <button
-                    key={n}
-                    className="btn-num"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      handleNumButtonDown(n);
-                    }}
-                    onPointerUp={() => handleNumButtonUp(n)}
-                    onPointerLeave={() => handleNumButtonUp(n)}
-                    onPointerCancel={() => handleNumButtonUp(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
+                {grid.map((n) => {
+                  const isOdd = n % 2 === 1;
+                  const isFirstRow = n <= 6;
+                  return (
+                    <button
+                      key={n}
+                      className={`btn-num ${isOdd ? "odd" : "even"} ${isFirstRow ? "first-row" : ""}`}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        handleNumButtonDown(n);
+                      }}
+                      onPointerUp={() => handleNumButtonUp(n)}
+                      onPointerLeave={() => handleNumButtonUp(n)}
+                      onPointerCancel={() => handleNumButtonUp(n)}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
               </div>
             </section>
 

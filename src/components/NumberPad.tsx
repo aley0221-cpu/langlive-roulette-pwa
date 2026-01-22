@@ -59,24 +59,28 @@ export default function NumberPad({ onTap, fastMode = false }: NumberPadProps) {
 
   return (
     <div className={fastMode ? "fast-mode" : ""}>
-      {/* 0-35：6x6 網格（0在第一格） */}
+      {/* 1-36：6x6 網格 */}
       <section className="pad">
         <div className="pad-grid">
-          {grid.map((n) => (
-            <button
-              key={n}
-              className="btn-num"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                handleNumButtonDown(n);
-              }}
-              onPointerUp={() => handleNumButtonUp(n)}
-              onPointerLeave={() => handleNumButtonUp(n)}
-              onPointerCancel={() => handleNumButtonUp(n)}
-            >
-              {n}
-            </button>
-          ))}
+          {grid.map((n) => {
+            const isOdd = n % 2 === 1;
+            const isFirstRow = n <= 6;
+            return (
+              <button
+                key={n}
+                className={`btn-num ${isOdd ? "odd" : "even"} ${isFirstRow ? "first-row" : ""}`}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleNumButtonDown(n);
+                }}
+                onPointerUp={() => handleNumButtonUp(n)}
+                onPointerLeave={() => handleNumButtonUp(n)}
+                onPointerCancel={() => handleNumButtonUp(n)}
+              >
+                {n}
+              </button>
+            );
+          })}
         </div>
       </section>
     </div>
