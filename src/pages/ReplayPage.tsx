@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { addReplaySpin } from "../core/engine";
 import { db } from "../core/engine";
 import NumberPad from "../components/NumberPad";
