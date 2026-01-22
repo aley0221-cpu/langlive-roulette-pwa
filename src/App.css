@@ -37,11 +37,11 @@ body{
   overflow: hidden;
 }
 
-/* Header 變薄，省空間，固定在頂部 */
+/* Header 變薄，省空間，固定在頂部 - 紅底、白色文字 */
 .header{
   padding: 8px 12px 6px;
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(10,16,32,.92), rgba(10,16,32,.55));
+  border-bottom: 1px solid rgba(255,59,92,.3);
+  background: var(--red); /* 紅底 */
   position: sticky;
   top: 0;
   z-index: 100;
@@ -70,7 +70,7 @@ body{
   flex-shrink: 0;
 }
 .title-text{
-  color: var(--text);
+  color: #ffffff; /* 白色文字 */
   font-weight: 900;
 }
 .tabs-container{
@@ -83,15 +83,14 @@ body{
   min-width: 60px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid rgba(120,160,220,.3);
-  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(10,16,32,.8));
-  color: var(--text);
+  border: 1px solid rgba(255,255,255,.2);
+  background: transparent;
+  color: #ffffff; /* 白色文字 */
   font-weight: 900;
   font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
   padding: 0 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,19 +98,18 @@ body{
   flex-shrink: 0;
 }
 .tab-btn:hover{
-  color: var(--text);
-  border-color: rgba(47,243,255,.3);
-  background: linear-gradient(180deg, rgba(47,243,255,.10), rgba(10,16,32,.7));
+  color: #ffffff;
+  background: rgba(255,255,255,.1);
 }
 .tab-btn.active{
-  color: var(--cyan);
-  border-color: rgba(47,243,255,.5);
-  background: linear-gradient(180deg, rgba(47,243,255,.20), rgba(10,16,32,.8));
-  box-shadow: 0 0 14px rgba(47,243,255,.4);
-  text-shadow: 0 0 10px rgba(47,243,255,.5);
+  color: #ffffff;
+  border-color: rgba(255,255,255,.5);
+  background: rgba(255,255,255,.2);
+  border-bottom: 3px solid #ffffff; /* 底線高亮 */
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
 }
 .tab-btn.active:active{
-  box-shadow: 0 0 18px rgba(47,243,255,.6);
   transform: translateY(1px);
 }
 .tab-btn:active{
@@ -205,6 +203,83 @@ body{
   margin:0;
   flex-shrink: 0; /* 不壓縮 */
   align-items: center;
+}
+
+/* 三顆主操作按鈕（同一排，等寬） */
+.actions-main{
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.btn-action-undo,
+.btn-action-zero,
+.btn-action-clear{
+  flex: 1; /* 等寬，各佔 1/3 */
+  height: 48px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  border: 2px solid;
+}
+
+/* 復原按鈕：紅色系 */
+.btn-action-undo{
+  background: var(--red);
+  color: #ffffff;
+  border-color: rgba(255,59,92,.6);
+  box-shadow: 0 0 12px rgba(255,59,92,.3);
+}
+.btn-action-undo:hover:not(:disabled){
+  box-shadow: 0 0 16px rgba(255,59,92,.5);
+}
+.btn-action-undo:disabled{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-action-undo:active:not(:disabled){
+  transform: translateY(1px);
+}
+
+/* 0 按鈕：綠色發光邊框 */
+.btn-action-zero{
+  background: rgba(66,255,139,.1);
+  color: #ffffff;
+  border-color: rgba(66,255,139,.6);
+  box-shadow: 0 0 16px rgba(66,255,139,.4);
+  font-size: 24px;
+}
+.btn-action-zero:hover{
+  box-shadow: 0 0 20px rgba(66,255,139,.6);
+  background: rgba(66,255,139,.2);
+}
+.btn-action-zero:active{
+  transform: translateY(1px);
+}
+
+/* 清空全部按鈕：紅色系 */
+.btn-action-clear{
+  background: var(--red);
+  color: #ffffff;
+  border-color: rgba(255,59,92,.6);
+  box-shadow: 0 0 12px rgba(255,59,92,.3);
+}
+.btn-action-clear:hover:not(:disabled){
+  box-shadow: 0 0 16px rgba(255,59,92,.5);
+}
+.btn-action-clear:disabled{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-action-clear:active:not(:disabled){
+  transform: translateY(1px);
 }
 /* 36號按鈕：放在復原前的小格子 */
 .btn-36-action{

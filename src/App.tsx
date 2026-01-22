@@ -286,16 +286,6 @@ export default function App() {
     setHistory([]);
   }
 
-  // 快速輸入號碼（用於標題後的輸入框）
-  const [quickInput, setQuickInput] = useState("");
-  function handleQuickInputSubmit() {
-    const num = parseInt(quickInput.trim());
-    if (!isNaN(num) && num >= 0 && num <= 36) {
-      const source: SpinSource = currentTab === "supplement" ? "replay" : "live";
-      add(num, source);
-      setQuickInput("");
-    }
-  }
 
   // 補記分頁的狀態已移到 ReplayPage 組件中
 
@@ -318,7 +308,7 @@ export default function App() {
       <header className="header">
         <div className="title-row">
           <div className="title">
-            <span className="title-text">浪輪盤</span>
+            <span className="title-text">浪LIVE輪盤</span>
           </div>
           <div className="tabs-container">
             {tabs.map((tab) => (
@@ -331,15 +321,6 @@ export default function App() {
               </button>
             ))}
           </div>
-          <button 
-            className="btn-0-header" 
-            onClick={() => {
-              const source: SpinSource = currentTab === "supplement" ? "replay" : "live";
-              add(0, source);
-            }}
-          >
-            0
-          </button>
         </div>
       </header>
 
@@ -375,12 +356,21 @@ export default function App() {
               </div>
             </section>
 
-            {/* 操作 */}
-            <section className="actions">
-              <button className="btn action secondary" onClick={undo} disabled={history.length === 0}>
+            {/* 三顆主操作按鈕（同一排） */}
+            <section className="actions-main">
+              <button className="btn-action-undo" onClick={undo} disabled={history.length === 0}>
                 ← 復原
               </button>
-              <button className="btn action danger" onClick={clearAll} disabled={history.length === 0}>
+              <button 
+                className="btn-action-zero" 
+                onClick={() => {
+                  const source: SpinSource = currentTab === "supplement" ? "replay" : "live";
+                  add(0, source);
+                }}
+              >
+                0
+              </button>
+              <button className="btn-action-clear" onClick={clearAll} disabled={history.length === 0}>
                 清空全部
               </button>
             </section>
@@ -391,21 +381,6 @@ export default function App() {
           <div className="panel-col">
             <div className="panel-head-row">
               <div className="panel-head">最近紀錄 (20)</div>
-              <div className="quick-input-group">
-                <input
-                  type="number"
-                  className="quick-input"
-                  value={quickInput}
-                  onChange={(e) => setQuickInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleQuickInputSubmit()}
-                  placeholder="0-36"
-                  min="0"
-                  max="36"
-                />
-                <button className="quick-submit" onClick={handleQuickInputSubmit}>
-                  輸入
-                </button>
-              </div>
             </div>
             <div className="recent">
               {rows20.map((it, idx) => {
