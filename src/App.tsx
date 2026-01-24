@@ -43,10 +43,6 @@ function oddEvenTag(n: number): string {
   return n % 2 === 1 ? "單" : "雙";
 }
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
 /**
  * 冷熱門權重演算法（衰減權重）
  * 最近 10 期的出現權重佔 70%，11-50 期的權重佔 30%
@@ -148,7 +144,6 @@ export default function App() {
   const balls = records.slice(0, 9);
 
   // 下方「最近紀錄(20)」- 只顯示前 8-9 個以適配單頁
-  const recent20 = records.slice(0, 20);
   const recentDisplay = records.slice(0, 9); // 只顯示前 9 個
 
   // 計算真正的統計（近 120 期，但用實際資料）
