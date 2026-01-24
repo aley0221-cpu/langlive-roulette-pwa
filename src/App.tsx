@@ -100,11 +100,15 @@ function calculateNumberHeat(records: number[], period: number = 50): Map<number
 /**
  * 建立馬可夫鏈轉移矩陣
  * 統計當號碼 A 出現後，下一個數字是 B 的次數
+ * 只統計最近 240 期（滑動窗口）
  */
 type TransitionMatrix = Map<number, Map<number, number>>;
 
 function buildTransitionMatrix(records: number[]): TransitionMatrix {
   const matrix: TransitionMatrix = new Map();
+  
+  // 只使用最近 240 期（滑動窗口）
+  const recent240 = records.slice(0, 240);
   
   // 初始化所有號碼（0-36）的轉移矩陣
   for (let i = 0; i <= 36; i++) {
@@ -112,9 +116,9 @@ function buildTransitionMatrix(records: number[]): TransitionMatrix {
   }
   
   // 遍歷歷史記錄，建立轉移關係（從後往前，因為 records[0] 是最新的）
-  for (let i = records.length - 1; i > 0; i--) {
-    const currentNum = records[i];      // 當前號碼
-    const nextNum = records[i - 1];     // 下一期號碼（時間上更早，但陣列中更前面）
+  for (let i = recent240.length - 1; i > 0; i--) {
+    const currentNum = recent240[i];      // 當前號碼
+    const nextNum = recent240[i - 1];     // 下一期號碼（時間上更早，但陣列中更前面）
     
     const transitions = matrix.get(currentNum);
     if (transitions) {
@@ -155,11 +159,11 @@ function calculateTransitionProbabilities(matrix: TransitionMatrix): Map<number,
 }
 
 /**
- * 計算全局出現頻率（過去 100 期）
+ * 計算全局出現頻率（過去 240 期，滑動窗口）
  */
 function calculateGlobalFrequencies(records: number[]): Map<number, number> {
   const frequencies = new Map<number, number>();
-  const last100 = records.slice(0, 100);
+  const last240 = records.slice(0, 240);
   
   // 初始化所有號碼
   for (let i = 0; i <= 36; i++) {
@@ -167,12 +171,12 @@ function calculateGlobalFrequencies(records: number[]): Map<number, number> {
   }
   
   // 統計出現次數
-  for (const num of last100) {
+  for (const num of last240) {
     frequencies.set(num, (frequencies.get(num) || 0) + 1);
   }
   
   // 轉換為百分比
-  const total = last100.length || 1;
+  const total = last240.length || 1;
   for (const [num, count] of frequencies.entries()) {
     frequencies.set(num, (count / total) * 100);
   }
@@ -386,7 +390,7 @@ function predictNextColor(
 }
 
 /**
- * 0 的特殊關聯分析
+ * 0 的特殊關聯分析（只分析最近 240 期，滑動窗口）
  * 逆向關聯：當「0」出現時，回頭看它前一期最常出現什麼號碼
  */
 function analyzeZeroAssociations(records: number[]): {
@@ -396,18 +400,21 @@ function analyzeZeroAssociations(records: number[]): {
   const beforeZero = new Map<number, number>();
   const afterNumbers = new Map<number, number>();
   
+  // 只使用最近 240 期（滑動窗口）
+  const recent240 = records.slice(0, 240);
+  
   // 遍歷記錄，找出 0 出現的位置
-  for (let i = 0; i < records.length; i++) {
-    if (records[i] === 0) {
-      // 逆向關聯：0 出現前一期最常出現的號碼
-      if (i < records.length - 1) {
-        const beforeNum = records[i + 1];
+  for (let i = 0; i < recent240.length; i++) {
+    if (recent240[i] === 0) {
+      // 逆向關聯：0 出現前一期最常出現的號碼（時間上更早的，即陣列中索引更大的）
+      if (i < recent240.length - 1) {
+        const beforeNum = recent240[i + 1];
         beforeZero.set(beforeNum, (beforeZero.get(beforeNum) || 0) + 1);
       }
       
-      // 正向關聯：哪些號碼後最容易出現 0
+      // 正向關聯：哪些號碼後最容易出現 0（時間上更早的號碼，之後出現 0）
       if (i > 0) {
-        const afterNum = records[i - 1];
+        const afterNum = recent240[i - 1];
         afterNumbers.set(afterNum, (afterNumbers.get(afterNum) || 0) + 1);
       }
     }
