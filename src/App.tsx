@@ -31,6 +31,14 @@ function numberColor(n: number): ColorTag {
   return n % 2 === 1 ? "red" : "black";
 }
 
+/**
+ * 獲取號碼的顏色類型（用於轉移矩陣）
+ */
+function getColorType(n: number): "red" | "black" | "green" {
+  if (n === 0) return "green";
+  return n % 2 === 1 ? "red" : "black";
+}
+
 function sizeTag(n: number): string {
   if (n === 0) return "—";
   if (n <= 12) return "小";
@@ -215,11 +223,15 @@ function predictNextNumbers(
 /**
  * 建立大小轉移矩陣（大中小）
  * 統計當大小 A 出現後，下一個大小是 B 的次數
+ * 只統計最近 240 期
  */
 type SizeTransitionMatrix = Map<SizeType, Map<SizeType, number>>;
 
 function buildSizeTransitionMatrix(records: number[]): SizeTransitionMatrix {
   const matrix: SizeTransitionMatrix = new Map();
+  
+  // 只使用最近 240 期
+  const recent240 = records.slice(0, 240);
   
   // 初始化所有大小的轉移矩陣
   const sizes: SizeType[] = ["small", "mid", "large", "zero"];
@@ -228,9 +240,9 @@ function buildSizeTransitionMatrix(records: number[]): SizeTransitionMatrix {
   }
   
   // 遍歷歷史記錄，建立大小轉移關係
-  for (let i = records.length - 1; i > 0; i--) {
-    const currentNum = records[i];
-    const nextNum = records[i - 1];
+  for (let i = recent240.length - 1; i > 0; i--) {
+    const currentNum = recent240[i];
+    const nextNum = recent240[i - 1];
     const currentSize = getSizeType(currentNum);
     const nextSize = getSizeType(nextNum);
     
@@ -287,6 +299,89 @@ function predictNextSize(
     mid: transitions.get("mid") || 0,
     large: transitions.get("large") || 0,
     zero: transitions.get("zero") || 0,
+  };
+}
+
+/**
+ * 建立紅黑轉移矩陣
+ * 統計當顏色 A 出現後，下一個顏色是 B 的次數
+ * 只統計最近 240 期
+ */
+type ColorTransitionMatrix = Map<"red" | "black" | "green", Map<"red" | "black" | "green", number>>;
+
+function buildColorTransitionMatrix(records: number[]): ColorTransitionMatrix {
+  const matrix: ColorTransitionMatrix = new Map();
+  
+  // 只使用最近 240 期
+  const recent240 = records.slice(0, 240);
+  
+  // 初始化所有顏色的轉移矩陣
+  const colors: Array<"red" | "black" | "green"> = ["red", "black", "green"];
+  for (const color of colors) {
+    matrix.set(color, new Map<"red" | "black" | "green", number>());
+  }
+  
+  // 遍歷歷史記錄，建立顏色轉移關係
+  for (let i = recent240.length - 1; i > 0; i--) {
+    const currentNum = recent240[i];
+    const nextNum = recent240[i - 1];
+    const currentColor = getColorType(currentNum);
+    const nextColor = getColorType(nextNum);
+    
+    const transitions = matrix.get(currentColor);
+    if (transitions) {
+      const count = transitions.get(nextColor) || 0;
+      transitions.set(nextColor, count + 1);
+    }
+  }
+  
+  return matrix;
+}
+
+/**
+ * 計算顏色轉移機率
+ */
+function calculateColorTransitionProbabilities(
+  matrix: ColorTransitionMatrix
+): Map<"red" | "black" | "green", Map<"red" | "black" | "green", number>> {
+  const probabilities: Map<"red" | "black" | "green", Map<"red" | "black" | "green", number>> = new Map();
+  
+  for (const [fromColor, transitions] of matrix.entries()) {
+    const probMap = new Map<"red" | "black" | "green", number>();
+    
+    // 計算總次數
+    let total = 0;
+    for (const count of transitions.values()) {
+      total += count;
+    }
+    
+    // 轉換為機率（百分比）
+    if (total > 0) {
+      for (const [toColor, count] of transitions.entries()) {
+        probMap.set(toColor, (count / total) * 100);
+      }
+    }
+    
+    probabilities.set(fromColor, probMap);
+  }
+  
+  return probabilities;
+}
+
+/**
+ * 預測下一期的顏色機率（基於當前號碼的顏色）
+ */
+function predictNextColor(
+  lastNumber: number,
+  colorTransitionProbs: Map<"red" | "black" | "green", Map<"red" | "black" | "green", number>>
+): { red: number; black: number; green: number } {
+  const currentColor = getColorType(lastNumber);
+  const transitions = colorTransitionProbs.get(currentColor) || new Map();
+  
+  return {
+    red: transitions.get("red") || 0,
+    black: transitions.get("black") || 0,
+    green: transitions.get("green") || 0,
   };
 }
 
@@ -573,7 +668,7 @@ export default function App() {
     return calculateHotColdNumbers(records, transitionProbabilities);
   }, [records, transitionProbabilities]);
 
-  // 建立大小轉移矩陣
+  // 建立大小轉移矩陣（最近 240 期）
   const sizeTransitionMatrix = useMemo(() => {
     return buildSizeTransitionMatrix(records);
   }, [records]);
@@ -582,6 +677,16 @@ export default function App() {
   const sizeTransitionProbabilities = useMemo(() => {
     return calculateSizeTransitionProbabilities(sizeTransitionMatrix);
   }, [sizeTransitionMatrix]);
+
+  // 建立紅黑轉移矩陣（最近 240 期）
+  const colorTransitionMatrix = useMemo(() => {
+    return buildColorTransitionMatrix(records);
+  }, [records]);
+
+  // 計算紅黑轉移機率
+  const colorTransitionProbabilities = useMemo(() => {
+    return calculateColorTransitionProbabilities(colorTransitionMatrix);
+  }, [colorTransitionMatrix]);
 
   // 計算全局出現頻率
   const globalFrequencies = useMemo(() => {
@@ -601,6 +706,13 @@ export default function App() {
     const lastNumber = records[0];
     return predictNextSize(lastNumber, sizeTransitionProbabilities);
   }, [records, sizeTransitionProbabilities]);
+
+  // 預測下一期的紅黑機率（根據最新號碼）
+  const colorPrediction = useMemo(() => {
+    if (records.length === 0) return null;
+    const lastNumber = records[0];
+    return predictNextColor(lastNumber, colorTransitionProbabilities);
+  }, [records, colorTransitionProbabilities]);
 
   // 0 的特殊關聯分析
   const zeroAssociations = useMemo(() => {
@@ -807,11 +919,60 @@ export default function App() {
             </div>
           )}
 
+          {/* 紅黑預測：下一期紅黑的機率比例 */}
+          {colorPrediction && records.length > 0 && (
+            <div className="color-prediction-panel">
+              <div className="prediction-title">
+                紅黑預測（馬可夫鏈，240期）
+                <span className="current-color-label">
+                  當前：{numberColor(records[0]) === "red" ? "紅" : numberColor(records[0]) === "black" ? "黑" : "綠"}
+                </span>
+              </div>
+              <div className="color-prediction-bars">
+                <div className="color-bar-item">
+                  <div className="color-bar-label">紅</div>
+                  <div className="color-bar-container">
+                    <div 
+                      className="color-bar red" 
+                      style={{ width: `${colorPrediction.red}%` }}
+                    >
+                      <span className="color-bar-value">{colorPrediction.red.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="color-bar-item">
+                  <div className="color-bar-label">黑</div>
+                  <div className="color-bar-container">
+                    <div 
+                      className="color-bar black" 
+                      style={{ width: `${colorPrediction.black}%` }}
+                    >
+                      <span className="color-bar-value">{colorPrediction.black.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+                {colorPrediction.green > 0 && (
+                  <div className="color-bar-item">
+                    <div className="color-bar-label">綠(0)</div>
+                    <div className="color-bar-container">
+                      <div 
+                        className="color-bar green" 
+                        style={{ width: `${colorPrediction.green}%` }}
+                      >
+                        <span className="color-bar-value">{colorPrediction.green.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* 大小預測：下一期大中小的機率比例 */}
           {sizePrediction && records.length > 0 && (
             <div className="size-prediction-panel">
               <div className="prediction-title">
-                大小預測（馬可夫鏈）
+                大小預測（馬可夫鏈，240期）
                 <span className="current-size-label">
                   當前：{sizeTag(records[0])}
                 </span>
