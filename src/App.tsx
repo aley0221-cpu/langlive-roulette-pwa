@@ -40,32 +40,60 @@ export default function App() {
   const undo = () => setRecords((prev) => prev.slice(1));
   const clearAll = () => setRecords([]);
 
-  // 圓球：最近 15 顆（你說上方「賭桌最近記錄」不要，這裡就是唯一顯示）
-  const balls = records.slice(0, 15);
+  // 圓球：最近 8-9 顆（縮小以顯示更多）
+  const balls = records.slice(0, 9);
 
-  // 下方「最近紀錄(20)」
+  // 下方「最近紀錄(20)」- 只顯示前 8-9 個以適配單頁
   const recent20 = records.slice(0, 20);
+  const recentDisplay = records.slice(0, 9); // 只顯示前 9 個
 
-  // 這裡先給「近 120」的版面用假資料（之後你接統計邏輯再替換）
-  const mock120 = {
-    red: clamp(Math.floor(recent20.length * 0.5), 0, 120),
-    black: clamp(recent20.length - Math.floor(recent20.length * 0.5), 0, 120),
-    green: recent20.filter((n) => n === 0).length,
-    odd: clamp(Math.floor(recent20.length * 0.52), 0, 120),
-    even: clamp(recent20.length - Math.floor(recent20.length * 0.52), 0, 120),
-    small: clamp(Math.floor(recent20.length * 0.33), 0, 120),
-    mid: clamp(Math.floor(recent20.length * 0.33), 0, 120),
-    big: clamp(recent20.length - Math.floor(recent20.length * 0.66), 0, 120),
-  };
+  // 計算真正的統計（近 120 期，但用實際資料）
+  const last120 = records.slice(0, 120);
+  const stats120 = useMemo(() => {
+    const red = last120.filter((n) => numberColor(n) === "red").length;
+    const black = last120.filter((n) => numberColor(n) === "black").length;
+    const green = last120.filter((n) => n === 0).length;
+    const odd = last120.filter((n) => n !== 0 && n % 2 === 1).length;
+    const even = last120.filter((n) => n !== 0 && n % 2 === 0).length;
+    const small = last120.filter((n) => n >= 1 && n <= 12).length;
+    const mid = last120.filter((n) => n >= 13 && n <= 24).length;
+    const big = last120.filter((n) => n >= 25 && n <= 36).length;
+    return { red, black, green, odd, even, small, mid, big };
+  }, [last120]);
+
+  // 計算 0 統計
+  const zeroStats = useMemo(() => {
+    const zeroIndices: number[] = [];
+    for (let i = 0; i < records.length; i++) {
+      if (records[i] === 0) zeroIndices.push(i);
+    }
+    
+    const miss = zeroIndices.length === 0 ? records.length : zeroIndices[0];
+    
+    let avgGap: number | null = null;
+    if (zeroIndices.length >= 2) {
+      let sum = 0;
+      for (let i = 0; i < zeroIndices.length - 1; i++) {
+        sum += zeroIndices[i + 1] - zeroIndices[i];
+      }
+      avgGap = sum / (zeroIndices.length - 1);
+    }
+    
+    return {
+      miss,
+      avgGap: avgGap === null ? null : Math.round(avgGap),
+      zeroCount: zeroIndices.length,
+    };
+  }, [records]);
 
   return (
     <div className="page">
       <div className="tableFrame">
         <div className="felt">
-          {/* 上方大 0（主角） */}
+          {/* 上方 0（縮小版） */}
           <div className="zeroHeroWrap">
             <button
-              className={`zeroHeroBtn ${lastClicked === 0 ? "isHot" : ""}`}
+              className={`zeroHeroBtn small ${lastClicked === 0 ? "isHot" : ""}`}
               onClick={() => addRecord(0)}
               aria-label="record 0"
             >
@@ -127,17 +155,17 @@ export default function App() {
             <div className="statsGrid">
               <div className="panel">
                 <div className="panelTitle">最近紀錄（20）</div>
-                <div className="recentList">
-                  {recent20.length === 0 ? (
+                <div className="recentList compact">
+                  {recentDisplay.length === 0 ? (
                     <div className="muted">—</div>
                   ) : (
-                    recent20.map((n, idx) => (
-                      <div key={`${n}-${idx}`} className="recentRow">
-                        <div className={`dot ${numberColor(n)}`} />
-                        <div className="recentNum">{n}</div>
-                        <div className="recentMeta">
-                          <span className="pill">{oddEvenTag(n)}</span>
-                          <span className="pill">{sizeTag(n)}</span>
+                    recentDisplay.map((n, idx) => (
+                      <div key={`${n}-${idx}`} className="recentRow compact">
+                        <div className={`dot small ${numberColor(n)}`} />
+                        <div className="recentNum small">{n}</div>
+                        <div className="recentMeta compact">
+                          <span className="pill small">{oddEvenTag(n)}</span>
+                          <span className="pill small">{sizeTag(n)}</span>
                         </div>
                       </div>
                     ))
@@ -152,26 +180,26 @@ export default function App() {
                   <div className="kvRow">
                     <div className="kvKey">顏色</div>
                     <div className="kvVal">
-                      <span className="chip red">紅 {mock120.red}</span>
-                      <span className="chip black">黑 {mock120.black}</span>
-                      <span className="chip green">綠 {mock120.green}</span>
+                      <span className="chip red">紅 {stats120.red}</span>
+                      <span className="chip black">黑 {stats120.black}</span>
+                      <span className="chip green">綠 {stats120.green}</span>
                     </div>
                   </div>
 
                   <div className="kvRow">
                     <div className="kvKey">單雙</div>
                     <div className="kvVal">
-                      <span className="chip">單 {mock120.odd}</span>
-                      <span className="chip">雙 {mock120.even}</span>
+                      <span className="chip">單 {stats120.odd}</span>
+                      <span className="chip">雙 {stats120.even}</span>
                     </div>
                   </div>
 
                   <div className="kvRow">
                     <div className="kvKey">大小</div>
                     <div className="kvVal">
-                      <span className="chip">小 {mock120.small}</span>
-                      <span className="chip">中 {mock120.mid}</span>
-                      <span className="chip">大 {mock120.big}</span>
+                      <span className="chip">小 {stats120.small}</span>
+                      <span className="chip">中 {stats120.mid}</span>
+                      <span className="chip">大 {stats120.big}</span>
                     </div>
                   </div>
                 </div>
@@ -182,11 +210,11 @@ export default function App() {
                 <div className="zeroStats">
                   <div className="zeroStatLine">
                     <span className="muted">平均幾次出 0：</span>
-                    <span className="strong">—</span>
+                    <span className="strong">{zeroStats.avgGap === null ? "—" : `${zeroStats.avgGap} 次`}</span>
                   </div>
                   <div className="zeroStatLine">
                     <span className="muted">目前已連續沒出 0：</span>
-                    <span className="strong">—</span>
+                    <span className="strong">{zeroStats.miss}</span>
                     <span className="muted">期</span>
                   </div>
                 </div>
