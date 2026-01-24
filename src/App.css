@@ -176,6 +176,26 @@ body{
   border-radius: 10px;
 }
 
+/* 確保在所有螢幕上使用縮小尺寸 */
+@media (max-width: 768px) {
+  .numBtn {
+    height: 48px !important;
+  }
+  
+  .numBtnInner {
+    font-size: 18px !important;
+  }
+  
+  .zeroHeroBtn.small {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  
+  .zeroHeroBtn.small .zeroHeroNum {
+    font-size: 24px !important;
+  }
+}
+
 /* 紅黑底 */
 .numBtn.red .numBtnInner{
   background: linear-gradient(180deg, rgba(198,58,58,.95), rgba(110,18,18,.95));
@@ -433,58 +453,78 @@ body{
   height: 8px;
 }
 
-/* 小螢幕更好按 */
-@media (max-width: 420px){
-  .numBtn{ height: 54px; }
-  .numberGrid{ gap: 7px; }
-  .zeroHeroBtn{ width: 86px; height: 86px; }
-}
-
-/* ===== Samsung Galaxy A16 專用尺寸優化 ===== */
+/* ===== 手機螢幕優化（縮小版以適配單頁） ===== */
 @media (max-width: 420px) {
-
   /* 1–36 數字格 */
   .numberGrid {
-    gap: 8px;
+    gap: 5px;  /* 更小的間距 */
   }
 
   .numBtn {
-    height: 64px;        /* 放大，拇指好按 */
+    height: 44px;  /* 縮小以適配單頁 */
   }
 
   .numBtnInner {
-    font-size: 23px;
+    font-size: 16px;  /* 縮小字體 */
   }
 
-  /* 中央大 0 */
-  .zeroHeroBtn {
-    width: 96px;
-    height: 96px;
+  /* 中央 0 按鈕（縮小版） */
+  .zeroHeroBtn.small {
+    width: 56px;  /* 更小 */
+    height: 56px;
   }
 
-  .zeroHeroNum {
-    font-size: 36px;
+  .zeroHeroBtn.small .zeroHeroNum {
+    font-size: 20px;  /* 更小字體 */
   }
 
   /* 圓球最近記錄 */
   .ball {
-    width: 44px;
-    height: 44px;
-    font-size: 16px;
+    width: 28px;  /* 更小 */
+    height: 28px;
+    font-size: 12px;  /* 更小字體 */
   }
 
   /* 功能鍵 */
   .actionBtn {
-    height: 56px;
-    font-size: 19px;
+    height: 42px;  /* 更小 */
+    font-size: 15px;  /* 更小字體 */
   }
 
   /* 統計區字體微調 */
   .panelTitle {
-    font-size: 16px;
+    font-size: 13px;  /* 更小 */
   }
 
-  .recentNum {
-    font-size: 18px;
+  .recentNum.small {
+    font-size: 14px;  /* 更小 */
+  }
+
+  /* 縮小整體間距 */
+  .felt {
+    padding: 8px 8px 10px;
+  }
+
+  .gridCard {
+    padding: 6px;
+  }
+
+  .ballsBar {
+    margin: 6px 0 4px;
+    padding: 6px;
+  }
+
+  .actionsRow {
+    margin: 4px 0 6px;
+    gap: 8px;
+  }
+
+  .statsWrap {
+    margin-top: 4px;
+    padding: 8px;
+  }
+
+  .panel {
+    padding: 6px;
   }
 }
