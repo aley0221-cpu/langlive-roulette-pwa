@@ -38,6 +38,15 @@ function sizeTag(n: number): string {
   return "大";
 }
 
+type SizeType = "small" | "mid" | "large" | "zero";
+
+function getSizeType(n: number): SizeType {
+  if (n === 0) return "zero";
+  if (n <= 12) return "small";
+  if (n <= 24) return "mid";
+  return "large";
+}
+
 function oddEvenTag(n: number): string {
   if (n === 0) return "—";
   return n % 2 === 1 ? "單" : "雙";
@@ -201,6 +210,84 @@ function predictNextNumbers(
       return a.num - b.num; // 得分相同時，號碼小的在前
     })
     .slice(0, topN);
+}
+
+/**
+ * 建立大小轉移矩陣（大中小）
+ * 統計當大小 A 出現後，下一個大小是 B 的次數
+ */
+type SizeTransitionMatrix = Map<SizeType, Map<SizeType, number>>;
+
+function buildSizeTransitionMatrix(records: number[]): SizeTransitionMatrix {
+  const matrix: SizeTransitionMatrix = new Map();
+  
+  // 初始化所有大小的轉移矩陣
+  const sizes: SizeType[] = ["small", "mid", "large", "zero"];
+  for (const size of sizes) {
+    matrix.set(size, new Map<SizeType, number>());
+  }
+  
+  // 遍歷歷史記錄，建立大小轉移關係
+  for (let i = records.length - 1; i > 0; i--) {
+    const currentNum = records[i];
+    const nextNum = records[i - 1];
+    const currentSize = getSizeType(currentNum);
+    const nextSize = getSizeType(nextNum);
+    
+    const transitions = matrix.get(currentSize);
+    if (transitions) {
+      const count = transitions.get(nextSize) || 0;
+      transitions.set(nextSize, count + 1);
+    }
+  }
+  
+  return matrix;
+}
+
+/**
+ * 計算大小轉移機率
+ */
+function calculateSizeTransitionProbabilities(matrix: SizeTransitionMatrix): Map<SizeType, Map<SizeType, number>> {
+  const probabilities: Map<SizeType, Map<SizeType, number>> = new Map();
+  
+  for (const [fromSize, transitions] of matrix.entries()) {
+    const probMap = new Map<SizeType, number>();
+    
+    // 計算總次數
+    let total = 0;
+    for (const count of transitions.values()) {
+      total += count;
+    }
+    
+    // 轉換為機率（百分比）
+    if (total > 0) {
+      for (const [toSize, count] of transitions.entries()) {
+        probMap.set(toSize, (count / total) * 100);
+      }
+    }
+    
+    probabilities.set(fromSize, probMap);
+  }
+  
+  return probabilities;
+}
+
+/**
+ * 預測下一期的大小機率（基於當前號碼的大小）
+ */
+function predictNextSize(
+  lastNumber: number,
+  sizeTransitionProbs: Map<SizeType, Map<SizeType, number>>
+): { small: number; mid: number; large: number; zero: number } {
+  const currentSize = getSizeType(lastNumber);
+  const transitions = sizeTransitionProbs.get(currentSize) || new Map();
+  
+  return {
+    small: transitions.get("small") || 0,
+    mid: transitions.get("mid") || 0,
+    large: transitions.get("large") || 0,
+    zero: transitions.get("zero") || 0,
+  };
 }
 
 /**
@@ -386,6 +473,16 @@ export default function App() {
     return calculateTransitionProbabilities(transitionMatrix);
   }, [transitionMatrix]);
 
+  // 建立大小轉移矩陣
+  const sizeTransitionMatrix = useMemo(() => {
+    return buildSizeTransitionMatrix(records);
+  }, [records]);
+
+  // 計算大小轉移機率
+  const sizeTransitionProbabilities = useMemo(() => {
+    return calculateSizeTransitionProbabilities(sizeTransitionMatrix);
+  }, [sizeTransitionMatrix]);
+
   // 計算全局出現頻率
   const globalFrequencies = useMemo(() => {
     return calculateGlobalFrequencies(records);
@@ -397,6 +494,13 @@ export default function App() {
     const lastNumber = records[0]; // 最新一期的號碼
     return predictNextNumbers(lastNumber, transitionProbabilities, globalFrequencies, 3);
   }, [records, transitionProbabilities, globalFrequencies]);
+
+  // 預測下一期的大小機率（根據最新號碼）
+  const sizePrediction = useMemo(() => {
+    if (records.length === 0) return null;
+    const lastNumber = records[0];
+    return predictNextSize(lastNumber, sizeTransitionProbabilities);
+  }, [records, sizeTransitionProbabilities]);
 
   // 0 的特殊關聯分析
   const zeroAssociations = useMemo(() => {
@@ -579,6 +683,66 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* 大小預測：下一期大中小的機率比例 */}
+          {sizePrediction && records.length > 0 && (
+            <div className="size-prediction-panel">
+              <div className="prediction-title">
+                大小預測（馬可夫鏈）
+                <span className="current-size-label">
+                  當前：{sizeTag(records[0])}
+                </span>
+              </div>
+              <div className="size-prediction-bars">
+                <div className="size-bar-item">
+                  <div className="size-bar-label">小 (1-12)</div>
+                  <div className="size-bar-container">
+                    <div 
+                      className="size-bar small" 
+                      style={{ width: `${sizePrediction.small}%` }}
+                    >
+                      <span className="size-bar-value">{sizePrediction.small.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="size-bar-item">
+                  <div className="size-bar-label">中 (13-24)</div>
+                  <div className="size-bar-container">
+                    <div 
+                      className="size-bar mid" 
+                      style={{ width: `${sizePrediction.mid}%` }}
+                    >
+                      <span className="size-bar-value">{sizePrediction.mid.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="size-bar-item">
+                  <div className="size-bar-label">大 (25-36)</div>
+                  <div className="size-bar-container">
+                    <div 
+                      className="size-bar large" 
+                      style={{ width: `${sizePrediction.large}%` }}
+                    >
+                      <span className="size-bar-value">{sizePrediction.large.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+                {sizePrediction.zero > 0 && (
+                  <div className="size-bar-item">
+                    <div className="size-bar-label">0</div>
+                    <div className="size-bar-container">
+                      <div 
+                        className="size-bar zero" 
+                        style={{ width: `${sizePrediction.zero}%` }}
+                      >
+                        <span className="size-bar-value">{sizePrediction.zero.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
