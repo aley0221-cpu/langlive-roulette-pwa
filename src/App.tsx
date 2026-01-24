@@ -828,6 +828,67 @@ function detectKillZone(records: number[]): {
 }
 
 /**
+ * 計算系統混亂度指標：馬可夫鏈預測準確率（最近 5 期）
+ * 如果準確率低於 20%，表示系統混亂，開獎可能受人為控制
+ */
+function calculateSystemChaos(records: number[]): {
+  accuracy: number;
+  isChaotic: boolean;
+  predictions: Array<{ period: number; predicted: number[]; actual: number; hit: boolean }>;
+} {
+  if (records.length < 6) {
+    // 需要至少 6 期數據（5 期用於預測，1 期用於驗證）
+    return { accuracy: 0, isChaotic: false, predictions: [] };
+  }
+  
+  // 建立臨時的轉移矩陣（用於歷史預測）
+  const predictions: Array<{ period: number; predicted: number[]; actual: number; hit: boolean }> = [];
+  
+  // 分析最近 5 期的預測準確率
+  for (let i = 0; i < 5; i++) {
+    if (i + 1 >= records.length) break;
+    
+    // 獲取該期之前的歷史數據（用於建立轉移矩陣）
+    const historyBefore = records.slice(i + 1);
+    if (historyBefore.length < 2) break;
+    
+    // 建立轉移矩陣
+    const tempMatrix = buildTransitionMatrix(historyBefore);
+    const tempProbs = calculateTransitionProbabilities(tempMatrix);
+    const tempGlobalFreqs = calculateGlobalFrequencies(historyBefore);
+    
+    // 獲取該期的實際號碼
+    const actualNumber = records[i];
+    
+    // 獲取該期之前的號碼（用於預測）
+    const previousNumber = records[i + 1];
+    
+    // 預測該期最可能的 3 個號碼
+    const predicted = predictNextNumbers(previousNumber, tempProbs, tempGlobalFreqs, 3);
+    const predictedNumbers = predicted.map(p => p.num);
+    
+    // 檢查實際號碼是否在預測的前 3 名中
+    const hit = predictedNumbers.includes(actualNumber);
+    
+    predictions.push({
+      period: i + 1,
+      predicted: predictedNumbers,
+      actual: actualNumber,
+      hit,
+    });
+  }
+  
+  // 計算準確率
+  const hitCount = predictions.filter(p => p.hit).length;
+  const accuracy = predictions.length > 0 ? (hitCount / predictions.length) * 100 : 0;
+  
+  // 如果準確率低於 20%，視為系統混亂
+  const isChaotic = accuracy < 20;
+  
+  return { accuracy, isChaotic, predictions };
+}
+
+/**
  * 獲取極冷門號碼（出現頻率最低的號碼）
  */
 function getColdestNumbers(
@@ -1312,6 +1373,11 @@ export default function App() {
   // 殺數偵測：監控最近 10 期的開獎區間
   const killZoneDetection = useMemo(() => {
     return detectKillZone(records);
+  }, [records]);
+
+  // 系統混亂度指標：計算馬可夫鏈預測準確率（最近 5 期）
+  const systemChaos = useMemo(() => {
+    return calculateSystemChaos(records);
   }, [records]);
 
   // 根據熱投區和信心值，給出建議號碼（如果殺數偵測啟動，優先推薦極冷門號或 0）
@@ -1830,6 +1896,38 @@ export default function App() {
               <div className="warning-icon">⚠️</div>
               <div className="warning-text">
                 0 號預警：當前號碼 <strong>{zeroWarning.number}</strong> 後出現 0 的機率為 <strong>{zeroWarning.probability.toFixed(1)}%</strong>
+              </div>
+            </div>
+          )}
+
+          {/* 系統混亂度指標 */}
+          {records.length >= 6 && (
+            <div className={`system-chaos-panel ${systemChaos.isChaotic ? "chaotic" : ""}`}>
+              <div className="chaos-title">
+                系統混亂度指標
+                {systemChaos.isChaotic && <span className="chaos-badge">🔴 殺數期</span>}
+              </div>
+              <div className="chaos-content">
+                <div className="chaos-accuracy">
+                  馬可夫鏈預測準確率（最近 5 期）：<strong>{systemChaos.accuracy.toFixed(1)}%</strong>
+                </div>
+                {systemChaos.isChaotic && (
+                  <div className="chaos-warning">
+                    <div className="warning-icon">⚠️</div>
+                    <div className="warning-text">
+                      <strong>殺數期：建議觀望</strong>
+                      <br />
+                      <span style={{ fontSize: "10px", color: "rgba(255,200,200,0.9)" }}>
+                        目前開獎完全不符合數學邏輯，而是受人為比例控制
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {!systemChaos.isChaotic && systemChaos.accuracy > 0 && (
+                  <div className="chaos-status normal">
+                    <span>系統運作正常，預測邏輯有效</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
