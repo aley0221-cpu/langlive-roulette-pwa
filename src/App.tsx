@@ -72,6 +72,11 @@ function calculateNumberHeat(records: number[], period: number = 50): Map<number
     heatMap.set(i, 0);
   }
   
+  // 防呆機制：如果歷史數據為空，返回所有號碼熱度為 0
+  if (!records || records.length === 0) {
+    return heatMap;
+  }
+  
   // 只取最近 period 期（預設 50 期）
   const recentRecords = records.slice(0, period);
   
@@ -106,6 +111,15 @@ type TransitionMatrix = Map<number, Map<number, number>>;
 
 function buildTransitionMatrix(records: number[]): TransitionMatrix {
   const matrix: TransitionMatrix = new Map();
+  
+  // 防呆機制：如果歷史數據為空，返回空的轉移矩陣
+  if (!records || records.length === 0) {
+    // 初始化所有號碼（0-36）的轉移矩陣
+    for (let i = 0; i <= 36; i++) {
+      matrix.set(i, new Map<number, number>());
+    }
+    return matrix;
+  }
   
   // 只使用最近 240 期（滑動窗口）
   const recent240 = records.slice(0, 240);
@@ -163,6 +177,15 @@ function calculateTransitionProbabilities(matrix: TransitionMatrix): Map<number,
  */
 function calculateGlobalFrequencies(records: number[]): Map<number, number> {
   const frequencies = new Map<number, number>();
+  
+  // 防呆機制：如果歷史數據為空，返回所有號碼頻率為 0
+  if (!records || records.length === 0) {
+    for (let i = 0; i <= 36; i++) {
+      frequencies.set(i, 0);
+    }
+    return frequencies;
+  }
+  
   const last240 = records.slice(0, 240);
   
   // 初始化所有號碼
@@ -233,6 +256,15 @@ type SizeTransitionMatrix = Map<SizeType, Map<SizeType, number>>;
 
 function buildSizeTransitionMatrix(records: number[]): SizeTransitionMatrix {
   const matrix: SizeTransitionMatrix = new Map();
+  
+  // 防呆機制：如果歷史數據為空，返回空的大小轉移矩陣
+  if (!records || records.length === 0) {
+    const sizes: SizeType[] = ["small", "mid", "large", "zero"];
+    for (const size of sizes) {
+      matrix.set(size, new Map<SizeType, number>());
+    }
+    return matrix;
+  }
   
   // 只使用最近 240 期
   const recent240 = records.slice(0, 240);
@@ -346,6 +378,15 @@ type ColorTransitionMatrix = Map<"red" | "black" | "green", Map<"red" | "black" 
 function buildColorTransitionMatrix(records: number[]): ColorTransitionMatrix {
   const matrix: ColorTransitionMatrix = new Map();
   
+  // 防呆機制：如果歷史數據為空，返回空的顏色轉移矩陣
+  if (!records || records.length === 0) {
+    const colors: Array<"red" | "black" | "green"> = ["red", "black", "green"];
+    for (const color of colors) {
+      matrix.set(color, new Map<"red" | "black" | "green", number>());
+    }
+    return matrix;
+  }
+  
   // 只使用最近 240 期
   const recent240 = records.slice(0, 240);
   
@@ -430,6 +471,11 @@ function analyzeZeroAssociations(records: number[]): {
   const beforeZero = new Map<number, number>();
   const afterNumbers = new Map<number, number>();
   
+  // 防呆機制：如果歷史數據為空，返回空的關聯分析
+  if (!records || records.length === 0) {
+    return { beforeZero, afterNumbers };
+  }
+  
   // 遍歷記錄，找出 0 出現的位置
   for (let i = 0; i < records.length; i++) {
     if (records[i] === 0) {
@@ -458,6 +504,11 @@ function calculateHotColdNumbers(
   records: number[],
   transitionProbabilities?: Map<number, Map<number, number>>
 ): { hot: number[]; cold: number[] } {
+  // 防呆機制：如果歷史數據為空，返回空的熱門和冷門號碼列表
+  if (!records || records.length === 0) {
+    return { hot: [], cold: [] };
+  }
+  
   const heatMap = calculateNumberHeat(records, 50);
   
   // 計算馬可夫鏈轉移機率（如果最新號碼存在）
@@ -541,6 +592,11 @@ function checkRepeats(
   repeated: Array<{ num: number; count: number; positions: number[] }>;
   singleOccurrence: Array<{ num: number; lastPosition: number; confidence: number }>;
 } {
+  // 防呆機制：如果歷史數據為空，返回空的重複和單次出現列表
+  if (!records || records.length === 0) {
+    return { repeated: [], singleOccurrence: [] };
+  }
+  
   // 取最近 15 筆數據
   const recent15 = records.slice(0, 15);
   
@@ -680,6 +736,11 @@ function calculateSizeOmissions(records: number[]): {
   large: number;
   zero: number;
 } {
+  // 防呆機制：如果歷史數據為空，返回所有遺漏期數為 0
+  if (!records || records.length === 0) {
+    return { small: 0, mid: 0, large: 0, zero: 0 };
+  }
+  
   let smallOmit = 0;
   let midOmit = 0;
   let largeOmit = 0;
@@ -731,6 +792,18 @@ function calculateSizeDistribution(records: number[], windowSize: number): {
   isUnbalanced: boolean;
   dominantSize: SizeType | null;
 } {
+  // 防呆機制：如果歷史數據為空，返回所有分佈為 0
+  if (!records || records.length === 0) {
+    return {
+      small: 0,
+      mid: 0,
+      large: 0,
+      zero: 0,
+      isUnbalanced: false,
+      dominantSize: null,
+    };
+  }
+  
   const recent = records.slice(0, windowSize);
   let small = 0;
   let mid = 0;
@@ -895,6 +968,11 @@ function getColdestNumbers(
   records: number[],
   count: number = 5
 ): Array<{ num: number; frequency: number }> {
+  // 防呆機制：如果歷史數據為空，返回空的冷門號碼列表
+  if (!records || records.length === 0) {
+    return [];
+  }
+  
   const recent100 = records.slice(0, 100);
   const frequencyMap = new Map<number, number>();
   
@@ -927,6 +1005,7 @@ function getColdestNumbers(
       return a.num - b.num;
     })
     .slice(0, count);
+}
 
 /**
  * 動態權重演算法：計算信心值（0-100%）
@@ -940,6 +1019,11 @@ function calculateConfidence(
   sizeOmissions?: { small: number; mid: number; large: number; zero: number },
   hotZone?: SizeType | null
 ): number {
+  // 防呆機制：如果歷史數據為空，立即返回 0
+  if (!records || records.length === 0) {
+    return 0;
+  }
+  
   let confidence = 0;
   
   // 1. 馬可夫鏈機率（40% 權重）
@@ -1004,6 +1088,11 @@ function getRecommendedNumbers(
   overheatedZone?: SizeType | null,
   count: number = 5
 ): Array<{ num: number; confidence: number; reason: string }> {
+  // 防呆機制：如果歷史數據為空，返回空的推薦列表
+  if (!records || records.length === 0) {
+    return [];
+  }
+  
   // 如果殺數偵測啟動，優先推薦極冷門號或 0
   if (killZoneDetection && killZoneDetection.isActive) {
     const coldestNumbers = getColdestNumbers(records, count - 1);
@@ -1234,6 +1323,11 @@ export default function App() {
     return zeroStats.miss >= threshold;
   }, [zeroStats.miss, zeroStats.expectedGap, zeroAlertThreshold]);
 
+  // 區間遺漏監控
+  const sizeOmissions = useMemo(() => {
+    return calculateSizeOmissions(records);
+  }, [records]);
+
   // 檢測跳跳虎模式（最近 5 期頻繁切換區間）
   const jumpingTigerMode = useMemo(() => {
     return detectJumpingTigerMode(records);
@@ -1311,13 +1405,6 @@ export default function App() {
     return predictNextNumbers(lastNumber, transitionProbabilities, globalFrequencies, 3);
   }, [records, transitionProbabilities, globalFrequencies]);
 
-  // 預測下一期的大小機率（根據最新號碼）
-  const sizePrediction = useMemo(() => {
-    if (records.length === 0) return null;
-    const lastNumber = records[0];
-    return predictNextSize(lastNumber, sizeTransitionProbabilities);
-  }, [records, sizeTransitionProbabilities]);
-
   // 預測下一期的紅黑機率（根據最新號碼）
   const colorPrediction = useMemo(() => {
     if (records.length === 0) return null;
@@ -1335,11 +1422,6 @@ export default function App() {
     return checkRepeats(records, transitionProbabilities);
   }, [records, transitionProbabilities]);
 
-  // 區間遺漏監控
-  const sizeOmissions = useMemo(() => {
-    return calculateSizeOmissions(records);
-  }, [records]);
-
   // 區間失控預警：如果某一區連續超過 8 期未出現
   const sizeOmissionAlerts = useMemo(() => {
     const alerts: Array<{ size: SizeType; omitCount: number }> = [];
@@ -1349,6 +1431,13 @@ export default function App() {
     if (sizeOmissions.zero > 8) alerts.push({ size: "zero", omitCount: sizeOmissions.zero });
     return alerts;
   }, [sizeOmissions]);
+
+  // 預測下一期的大小機率（根據最新號碼）
+  const sizePrediction = useMemo(() => {
+    if (records.length === 0) return null;
+    const lastNumber = records[0];
+    return predictNextSize(lastNumber, sizeTransitionProbabilities, sizeOmissionAlerts);
+  }, [records, sizeTransitionProbabilities, sizeOmissionAlerts]);
 
   // 快窗模式：穩健模式（30期）vs 靈敏模式（8期）
   const windowSize = fastWindowMode ? 8 : 30;
@@ -2232,6 +2321,10 @@ export default function App() {
                               afterLabel: (context: any) => {
                                 const index = context.dataIndex;
                                 const pred = nextNumbersForSelected[index];
+                                // 防呆機制：如果 pred 不存在，返回空陣列
+                                if (!pred) {
+                                  return [];
+                                }
                                 return [
                                   `轉移機率: ${pred.markovProb.toFixed(1)}%`,
                                   `全局頻率: ${pred.globalFreq.toFixed(1)}%`,
