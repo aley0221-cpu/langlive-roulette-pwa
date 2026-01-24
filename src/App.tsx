@@ -290,20 +290,50 @@ function calculateSizeTransitionProbabilities(matrix: SizeTransitionMatrix): Map
 
 /**
  * 預測下一期的大小機率（基於當前號碼的大小）
+ * @param omissionAlerts 失控區間列表，用於降低失控區的權重
  */
 function predictNextSize(
   lastNumber: number,
-  sizeTransitionProbs: Map<SizeType, Map<SizeType, number>>
+  sizeTransitionProbs: Map<SizeType, Map<SizeType, number>>,
+  omissionAlerts?: Array<{ size: SizeType; omitCount: number }>
 ): { small: number; mid: number; large: number; zero: number } {
   const currentSize = getSizeType(lastNumber);
   const transitions = sizeTransitionProbs.get(currentSize) || new Map();
   
-  return {
-    small: transitions.get("small") || 0,
-    mid: transitions.get("mid") || 0,
-    large: transitions.get("large") || 0,
-    zero: transitions.get("zero") || 0,
-  };
+  let small = transitions.get("small") || 0;
+  let mid = transitions.get("mid") || 0;
+  let large = transitions.get("large") || 0;
+  let zero = transitions.get("zero") || 0;
+  
+  // 如果某一區失控（超過 8 期未出現），降低該區的權重
+  if (omissionAlerts && omissionAlerts.length > 0) {
+    for (const alert of omissionAlerts) {
+      // 降低失控區的權重：每超過 8 期，降低 10%（最多降低 50%）
+      const reduction = Math.min((alert.omitCount - 8) * 10, 50);
+      
+      if (alert.size === "small") {
+        small = Math.max(0, small - reduction);
+      } else if (alert.size === "mid") {
+        mid = Math.max(0, mid - reduction);
+      } else if (alert.size === "large") {
+        large = Math.max(0, large - reduction);
+      } else if (alert.size === "zero") {
+        zero = Math.max(0, zero - reduction);
+      }
+    }
+    
+    // 重新標準化機率，確保總和為 100%
+    const total = small + mid + large + zero;
+    if (total > 0) {
+      const scale = 100 / total;
+      small = small * scale;
+      mid = mid * scale;
+      large = large * scale;
+      zero = zero * scale;
+    }
+  }
+  
+  return { small, mid, large, zero };
 }
 
 /**
@@ -709,6 +739,97 @@ function calculateSizeDistribution(records: number[], windowSize: number): {
 }
 
 /**
+ * 殺數偵測邏輯：監控最近 10 期的開獎區間
+ * 如果某一區的出現頻率低於數學預期的 20%（理論應為 33%），標記為「平台避險區」
+ */
+function detectKillZone(records: number[]): {
+  isActive: boolean;
+  killZones: Array<{ size: SizeType; frequency: number; expectedFrequency: number }>;
+} {
+  const recent10 = records.slice(0, 10);
+  if (recent10.length < 10) {
+    return { isActive: false, killZones: [] };
+  }
+  
+  let small = 0;
+  let mid = 0;
+  let large = 0;
+  
+  for (const num of recent10) {
+    const size = getSizeType(num);
+    if (size === "small") small++;
+    else if (size === "mid") mid++;
+    else if (size === "large") large++;
+    // 0 不計入區間統計
+  }
+  
+  const total = recent10.length;
+  const expectedFrequency = 33.33; // 理論應為 33.33%（1/3）
+  const killThreshold = 20; // 低於 20% 視為避險區
+  
+  const smallFreq = (small / total) * 100;
+  const midFreq = (mid / total) * 100;
+  const largeFreq = (large / total) * 100;
+  
+  const killZones: Array<{ size: SizeType; frequency: number; expectedFrequency: number }> = [];
+  
+  if (smallFreq < killThreshold) {
+    killZones.push({ size: "small", frequency: smallFreq, expectedFrequency });
+  }
+  if (midFreq < killThreshold) {
+    killZones.push({ size: "mid", frequency: midFreq, expectedFrequency });
+  }
+  if (largeFreq < killThreshold) {
+    killZones.push({ size: "large", frequency: largeFreq, expectedFrequency });
+  }
+  
+  return {
+    isActive: killZones.length > 0,
+    killZones,
+  };
+}
+
+/**
+ * 獲取極冷門號碼（出現頻率最低的號碼）
+ */
+function getColdestNumbers(
+  records: number[],
+  count: number = 5
+): Array<{ num: number; frequency: number }> {
+  const recent100 = records.slice(0, 100);
+  const frequencyMap = new Map<number, number>();
+  
+  // 初始化所有號碼（1-36，不包括 0）
+  for (let i = 1; i <= 36; i++) {
+    frequencyMap.set(i, 0);
+  }
+  
+  // 統計出現次數
+  for (const num of recent100) {
+    if (num >= 1 && num <= 36) {
+      frequencyMap.set(num, (frequencyMap.get(num) || 0) + 1);
+    }
+  }
+  
+  // 轉換為陣列並計算頻率
+  const numbers: Array<{ num: number; frequency: number }> = [];
+  const total = recent100.length || 1;
+  
+  for (let i = 1; i <= 36; i++) {
+    const count = frequencyMap.get(i) || 0;
+    const frequency = (count / total) * 100;
+    numbers.push({ num: i, frequency });
+  }
+  
+  // 按頻率升序排序（頻率越低越冷門）
+  return numbers
+    .sort((a, b) => {
+      if (a.frequency !== b.frequency) return a.frequency - b.frequency;
+      return a.num - b.num;
+    })
+    .slice(0, count);
+
+/**
  * 動態權重演算法：計算信心值（0-100%）
  * 結合：馬可夫鏈機率、15期重複理論、當前區間熱度
  */
@@ -771,6 +892,7 @@ function calculateConfidence(
 
 /**
  * 根據熱投區和信心值，給出建議號碼（避開熱投區）
+ * 如果殺數偵測啟動，優先推薦極冷門號或 0
  */
 function getRecommendedNumbers(
   records: number[],
@@ -778,11 +900,40 @@ function getRecommendedNumbers(
   repeatAnalysis?: { repeated: Array<{ num: number; count: number; positions: number[] }>; singleOccurrence: Array<{ num: number; lastPosition: number; confidence: number }> },
   sizeOmissions?: { small: number; mid: number; large: number; zero: number },
   hotZone?: SizeType | null,
+  killZoneDetection?: { isActive: boolean; killZones: Array<{ size: SizeType; frequency: number; expectedFrequency: number }> },
   count: number = 5
 ): Array<{ num: number; confidence: number; reason: string }> {
+  // 如果殺數偵測啟動，優先推薦極冷門號或 0
+  if (killZoneDetection && killZoneDetection.isActive) {
+    const coldestNumbers = getColdestNumbers(records, count - 1);
+    const recommendations: Array<{ num: number; confidence: number; reason: string }> = [];
+    
+    // 優先推薦 0
+    recommendations.push({
+      num: 0,
+      confidence: 95,
+      reason: `平台避險啟動，建議 0（避險區：${killZoneDetection.killZones.map(kz => kz.size === "small" ? "小" : kz.size === "mid" ? "中" : "大").join("、")}）`,
+    });
+    
+    // 推薦極冷門號碼
+    for (const cold of coldestNumbers) {
+      const numSize = getSizeType(cold.num);
+      // 如果該號碼在避險區內，額外加分
+      const isInKillZone = killZoneDetection.killZones.some(kz => kz.size === numSize);
+      
+      recommendations.push({
+        num: cold.num,
+        confidence: isInKillZone ? 90 : 85,
+        reason: `極冷門號（出現率 ${cold.frequency.toFixed(1)}%）${isInKillZone ? "，位於避險區" : ""}`,
+      });
+    }
+    
+    return recommendations.slice(0, count);
+  }
+  
+  // 正常模式：計算所有號碼的信心值
   const recommendations: Array<{ num: number; confidence: number; reason: string }> = [];
   
-  // 計算所有號碼的信心值
   for (let i = 1; i <= 36; i++) {
     const numSize = getSizeType(i);
     
@@ -993,6 +1144,16 @@ export default function App() {
     return calculateSizeOmissions(records);
   }, [records]);
 
+  // 區間失控預警：如果某一區連續超過 8 期未出現
+  const sizeOmissionAlerts = useMemo(() => {
+    const alerts: Array<{ size: SizeType; omitCount: number }> = [];
+    if (sizeOmissions.small > 8) alerts.push({ size: "small", omitCount: sizeOmissions.small });
+    if (sizeOmissions.mid > 8) alerts.push({ size: "mid", omitCount: sizeOmissions.mid });
+    if (sizeOmissions.large > 8) alerts.push({ size: "large", omitCount: sizeOmissions.large });
+    if (sizeOmissions.zero > 8) alerts.push({ size: "zero", omitCount: sizeOmissions.zero });
+    return alerts;
+  }, [sizeOmissions]);
+
   // 快窗模式：穩健模式（30期）vs 靈敏模式（8期）
   const windowSize = fastWindowMode ? 8 : 30;
 
@@ -1013,7 +1174,12 @@ export default function App() {
     return { active: false, dominantSize: null, zeroBoost: 0 };
   }, [sizeDistribution]);
 
-  // 根據熱投區和信心值，給出建議號碼
+  // 殺數偵測：監控最近 10 期的開獎區間
+  const killZoneDetection = useMemo(() => {
+    return detectKillZone(records);
+  }, [records]);
+
+  // 根據熱投區和信心值，給出建議號碼（如果殺數偵測啟動，優先推薦極冷門號或 0）
   const recommendedNumbers = useMemo(() => {
     return getRecommendedNumbers(
       records,
@@ -1021,9 +1187,10 @@ export default function App() {
       repeatAnalysis,
       sizeOmissions,
       hotZone,
+      killZoneDetection,
       5
     );
-  }, [records, transitionProbabilities, repeatAnalysis, sizeOmissions, hotZone]);
+  }, [records, transitionProbabilities, repeatAnalysis, sizeOmissions, hotZone, killZoneDetection]);
 
   // 0 號預警：檢查當前號碼是否與 0 有強烈關聯
   const zeroWarning = useMemo(() => {
@@ -1316,6 +1483,45 @@ export default function App() {
                 </div>
               </div>
 
+              {/* 殺數偵測：平台避險區預警 */}
+              {killZoneDetection.isActive && (
+                <div className="kill-zone-alert">
+                  <div className="warning-icon">🔴</div>
+                  <div className="warning-text">
+                    <strong>平台避險區偵測啟動：</strong>
+                    {killZoneDetection.killZones.map((kz, idx) => (
+                      <span key={kz.size}>
+                        <strong>{kz.size === "small" ? "小" : kz.size === "mid" ? "中" : "大"}</strong>
+                        區出現率僅 {kz.frequency.toFixed(1)}%（理論 {kz.expectedFrequency.toFixed(1)}%）
+                        {idx < killZoneDetection.killZones.length - 1 && "、"}
+                      </span>
+                    ))}
+                    <br />
+                    <span style={{ fontSize: "10px", color: "rgba(255,200,200,0.9)" }}>
+                      建議轉向極冷門號或 0，系統正在修正輸贏比例
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 區間失控預警總結 */}
+              {sizeOmissionAlerts.length > 0 && (
+                <div className="omission-alerts-summary">
+                  <div className="warning-icon">⚠️</div>
+                  <div className="warning-text">
+                    <strong>失控區間：</strong>
+                    {sizeOmissionAlerts.map((alert, idx) => (
+                      <span key={alert.size}>
+                        {alert.size === "small" ? "小" : alert.size === "mid" ? "中" : alert.size === "large" ? "大" : "0"}
+                        區({alert.omitCount}期)
+                        {idx < sizeOmissionAlerts.length - 1 && "、"}
+                      </span>
+                    ))}
+                    ，已自動降低該區預測權重
+                  </div>
+                </div>
+              )}
+
               {/* 防禦性 0 預警 */}
               {defensiveZeroAlert.active && (
                 <div className="defensive-zero-alert">
@@ -1358,13 +1564,18 @@ export default function App() {
                 )}
               </div>
 
-              {/* 建議號碼（避開熱投區） */}
-              {hotZone && recommendedNumbers.length > 0 && (
+              {/* 建議號碼（避開熱投區 或 殺數偵測模式） */}
+              {(hotZone || killZoneDetection.isActive) && recommendedNumbers.length > 0 && (
                 <div className="recommended-numbers">
-                  <div className="section-subtitle">建議號碼（避開{hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區）</div>
+                  <div className="section-subtitle">
+                    {killZoneDetection.isActive 
+                      ? "建議號碼（平台避險模式：極冷門號或 0）"
+                      : `建議號碼（避開${hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區）`
+                    }
+                  </div>
                   <div className="recommended-list">
                     {recommendedNumbers.map((item) => (
-                      <div key={item.num} className="recommended-item">
+                      <div key={item.num} className={`recommended-item ${killZoneDetection.isActive && item.num === 0 ? "kill-zone-priority" : ""}`}>
                         <div className={`recommended-number ${numberColor(item.num)}`}>{item.num}</div>
                         <div className="recommended-confidence">信心值: {item.confidence.toFixed(1)}%</div>
                         {item.reason && <div className="recommended-reason">{item.reason}</div>}

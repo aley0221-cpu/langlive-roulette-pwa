@@ -848,6 +848,67 @@ body{
   font-weight: 700;
 }
 
+.kill-zone-alert{
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(198,58,58,.35), rgba(110,18,18,.25));
+  border: 2px solid rgba(198,58,58,.7);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: pulse 1.5s infinite;
+  box-shadow: 0 0 12px rgba(198,58,58,.5);
+}
+
+.kill-zone-alert .warning-icon{
+  font-size: 24px;
+  flex-shrink: 0;
+  animation: pulse 1s infinite;
+}
+
+.kill-zone-alert .warning-text{
+  flex: 1;
+  font-size: 12px;
+  color: rgba(255,255,255,.95);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.kill-zone-alert .warning-text strong{
+  color: rgba(255,150,150,1);
+  text-shadow: 0 0 8px rgba(198,58,58,.8);
+}
+
+.omission-alerts-summary{
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(198,58,58,.25), rgba(110,18,18,.15));
+  border: 2px solid rgba(198,58,58,.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse 2s infinite;
+}
+
+.omission-alerts-summary .warning-icon{
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.omission-alerts-summary .warning-text{
+  flex: 1;
+  font-size: 11px;
+  color: rgba(255,255,255,.95);
+  font-weight: 700;
+}
+
+.omission-alerts-summary .warning-text strong{
+  color: rgba(255,200,200,1);
+  text-shadow: 0 0 8px rgba(198,58,58,.8);
+}
+
 .defensive-zero-alert{
   margin-top: 10px;
   padding: 8px;
@@ -988,6 +1049,13 @@ body{
   font-size: 8px;
   color: var(--muted);
   text-align: center;
+}
+
+.recommended-item.kill-zone-priority{
+  border: 2px solid rgba(198,58,58,.6);
+  box-shadow: 0 0 12px rgba(198,58,58,.5);
+  background: linear-gradient(180deg, rgba(198,58,58,.2), rgba(0,0,0,.3));
+  animation: pulse 2s infinite;
 }
 
 /* 單次出現候選名單（整合到預測面板） */
