@@ -282,7 +282,7 @@ export default function App() {
   const numbers1to36 = useMemo(() => Array.from({ length: 36 }, (_, i) => i + 1), []);
   const [records, setRecords] = useState<number[]>([]);
   const [lastClicked, setLastClicked] = useState<number | null>(null);
-  const [zeroAlertThreshold, setZeroAlertThreshold] = useState<number>(37); // 自定義門檻，預設 37（數學期望值）
+  const [zeroAlertThreshold, setZeroAlertThreshold] = useState<number>(120); // 自定義門檻，預設 120 期
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null); // 選中的號碼（用於顯示接續關聯表）
 
   const addRecord = (n: number) => {
@@ -658,17 +658,22 @@ export default function App() {
                     <span className="muted">期</span>
                   </div>
                   <div className="zeroStatLine">
-                    <span className="muted">期望值：</span>
+                    <span className="muted">期望值（過去 120 期）：</span>
                     <span className="strong">{zeroStats.expectedGap} 期</span>
+                    <span className="muted" style={{ marginLeft: "8px", fontSize: "10px" }}>
+                      {zeroStats.zeroCount120 >= 2 
+                        ? `（基於過去 120 期實際數據，出現 ${zeroStats.zeroCount120} 次）`
+                        : "（數據不足，使用理論值 37 期）"}
+                    </span>
                   </div>
                   <div className="zeroStatLine">
                     <span className="muted">警報門檻：</span>
                     <input
                       type="number"
                       min="1"
-                      max="100"
+                      max="200"
                       value={zeroAlertThreshold}
-                      onChange={(e) => setZeroAlertThreshold(parseInt(e.target.value) || 37)}
+                      onChange={(e) => setZeroAlertThreshold(parseInt(e.target.value) || 120)}
                       className="threshold-input"
                       style={{ width: "60px", padding: "2px 4px", marginLeft: "8px" }}
                     />
