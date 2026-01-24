@@ -770,6 +770,226 @@ body{
   text-shadow: 0 1px 3px rgba(0,0,0,.5);
 }
 
+.zero-boost-indicator{
+  font-size: 10px;
+  color: rgba(43,198,107,.9);
+  margin-left: 8px;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(43,198,107,.6);
+}
+
+/* 區間遺漏監控面板 */
+.omission-tracking-panel{
+  margin: 8px 0;
+  border-radius: 14px;
+  padding: 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.22));
+  border: 1px solid rgba(242,211,138,.22);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+}
+
+.window-mode-toggle{
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(242,211,138,.3);
+  background: rgba(0,0,0,.3);
+  color: rgba(242,211,138,.9);
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s;
+  font-weight: 700;
+}
+
+.window-mode-toggle:hover{
+  background: rgba(242,211,138,.2);
+  border-color: rgba(242,211,138,.5);
+}
+
+.window-mode-toggle.fast{
+  background: rgba(198,58,58,.3);
+  border-color: rgba(198,58,58,.5);
+  color: rgba(255,200,200,1);
+}
+
+.omission-stats{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.omission-item{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 6px;
+  background: rgba(0,0,0,.2);
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.omission-item.alert{
+  background: rgba(198,58,58,.2);
+  border: 1px solid rgba(198,58,58,.4);
+  animation: pulse 2s infinite;
+}
+
+.omission-label{
+  min-width: 50px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.omission-count{
+  flex: 1;
+  color: rgba(242,211,138,.9);
+  font-weight: 700;
+}
+
+.defensive-zero-alert{
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(43,198,107,.25), rgba(11,106,58,.15));
+  border: 2px solid rgba(43,198,107,.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse 2s infinite;
+}
+
+.defensive-zero-alert .warning-icon{
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.defensive-zero-alert .warning-text{
+  flex: 1;
+  font-size: 11px;
+  color: rgba(255,255,255,.95);
+  font-weight: 700;
+}
+
+.defensive-zero-alert .warning-text strong{
+  color: rgba(43,198,107,1);
+  text-shadow: 0 0 8px rgba(43,198,107,.8);
+}
+
+.hot-zone-buttons{
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hot-zone-label{
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.hot-zone-btn{
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(242,211,138,.3);
+  background: rgba(0,0,0,.3);
+  color: rgba(242,211,138,.9);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hot-zone-btn:hover{
+  background: rgba(242,211,138,.2);
+  border-color: rgba(242,211,138,.5);
+}
+
+.hot-zone-btn.active{
+  background: linear-gradient(180deg, rgba(198,58,58,.6), rgba(198,58,58,.4));
+  border-color: rgba(198,58,58,.8);
+  color: rgba(255,255,255,.95);
+  box-shadow: 0 0 8px rgba(198,58,58,.6);
+}
+
+.hot-zone-btn.clear{
+  background: rgba(120,120,120,.3);
+  border-color: rgba(120,120,120,.5);
+  color: rgba(255,255,255,.8);
+  font-size: 10px;
+  padding: 6px 8px;
+}
+
+.recommended-numbers{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(242,211,138,.15);
+}
+
+.recommended-list{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.recommended-item{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.25));
+  border: 1px solid rgba(242,211,138,.25);
+  min-width: 70px;
+}
+
+.recommended-number{
+  font-size: 20px;
+  font-weight: 900;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(242,211,138,.4);
+}
+
+.recommended-number.red{
+  background: linear-gradient(180deg, rgba(198,58,58,.95), rgba(110,18,18,.95));
+  color: rgba(255,255,255,.95);
+}
+
+.recommended-number.black{
+  background: linear-gradient(180deg, rgba(30,30,40,.95), rgba(11,11,15,.98));
+  color: rgba(255,255,255,.95);
+}
+
+.recommended-number.green{
+  background: linear-gradient(180deg, rgba(43,198,107,.95), rgba(11,106,58,.98));
+  color: rgba(255,255,255,.95);
+}
+
+.recommended-confidence{
+  font-size: 9px;
+  color: rgba(242,211,138,.9);
+  font-weight: 700;
+  text-align: center;
+}
+
+.recommended-reason{
+  font-size: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
 /* 單次出現候選名單（整合到預測面板） */
 .single-occurrence-section{
   margin-top: 12px;

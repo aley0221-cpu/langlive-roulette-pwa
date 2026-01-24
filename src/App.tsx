@@ -603,12 +603,233 @@ function checkRepeats(
   return { repeated, singleOccurrence };
 }
 
+/**
+ * 區間遺漏監控：計算大、中、小、0 各自連續多少期沒有出現
+ */
+function calculateSizeOmissions(records: number[]): {
+  small: number;
+  mid: number;
+  large: number;
+  zero: number;
+} {
+  let smallOmit = 0;
+  let midOmit = 0;
+  let largeOmit = 0;
+  let zeroOmit = 0;
+  
+  for (let i = 0; i < records.length; i++) {
+    const num = records[i];
+    const size = getSizeType(num);
+    
+    if (size === "small") {
+      smallOmit = 0;
+      midOmit++;
+      largeOmit++;
+      zeroOmit++;
+    } else if (size === "mid") {
+      smallOmit++;
+      midOmit = 0;
+      largeOmit++;
+      zeroOmit++;
+    } else if (size === "large") {
+      smallOmit++;
+      midOmit++;
+      largeOmit = 0;
+      zeroOmit++;
+    } else if (size === "zero") {
+      smallOmit++;
+      midOmit++;
+      largeOmit++;
+      zeroOmit = 0;
+    }
+  }
+  
+  return {
+    small: smallOmit,
+    mid: midOmit,
+    large: largeOmit,
+    zero: zeroOmit,
+  };
+}
+
+/**
+ * 計算區間分佈（用於防禦性 0 預警）
+ */
+function calculateSizeDistribution(records: number[], windowSize: number): {
+  small: number;
+  mid: number;
+  large: number;
+  zero: number;
+  isUnbalanced: boolean;
+  dominantSize: SizeType | null;
+} {
+  const recent = records.slice(0, windowSize);
+  let small = 0;
+  let mid = 0;
+  let large = 0;
+  let zero = 0;
+  
+  for (const num of recent) {
+    const size = getSizeType(num);
+    if (size === "small") small++;
+    else if (size === "mid") mid++;
+    else if (size === "large") large++;
+    else if (size === "zero") zero++;
+  }
+  
+  const total = recent.length || 1;
+  const smallPercent = (small / total) * 100;
+  const midPercent = (mid / total) * 100;
+  const largePercent = (large / total) * 100;
+  
+  // 檢查是否有區間佔比超過 60%
+  const threshold = 60;
+  let isUnbalanced = false;
+  let dominantSize: SizeType | null = null;
+  
+  if (smallPercent >= threshold) {
+    isUnbalanced = true;
+    dominantSize = "small";
+  } else if (midPercent >= threshold) {
+    isUnbalanced = true;
+    dominantSize = "mid";
+  } else if (largePercent >= threshold) {
+    isUnbalanced = true;
+    dominantSize = "large";
+  }
+  
+  return {
+    small: smallPercent,
+    mid: midPercent,
+    large: largePercent,
+    zero: (zero / total) * 100,
+    isUnbalanced,
+    dominantSize,
+  };
+}
+
+/**
+ * 動態權重演算法：計算信心值（0-100%）
+ * 結合：馬可夫鏈機率、15期重複理論、當前區間熱度
+ */
+function calculateConfidence(
+  num: number,
+  records: number[],
+  transitionProbabilities?: Map<number, Map<number, number>>,
+  repeatAnalysis?: { repeated: Array<{ num: number; count: number; positions: number[] }>; singleOccurrence: Array<{ num: number; lastPosition: number; confidence: number }> },
+  sizeOmissions?: { small: number; mid: number; large: number; zero: number },
+  hotZone?: SizeType | null
+): number {
+  let confidence = 0;
+  
+  // 1. 馬可夫鏈機率（40% 權重）
+  if (records.length > 0 && transitionProbabilities) {
+    const lastNumber = records[0];
+    const transitions = transitionProbabilities.get(lastNumber) || new Map();
+    const markovProb = transitions.get(num) || 0;
+    confidence += markovProb * 0.4; // 最高 40 分
+  }
+  
+  // 2. 15期重複理論（30% 權重）
+  if (repeatAnalysis) {
+    // 檢查是否在重複號碼列表中
+    const isRepeated = repeatAnalysis.repeated.some(item => item.num === num);
+    if (isRepeated) {
+      confidence += 30; // 重複號碼加分
+    }
+    
+    // 檢查是否在單次出現候選名單中
+    const singleItem = repeatAnalysis.singleOccurrence.find(item => item.num === num);
+    if (singleItem) {
+      // 使用候選名單的信心值（標準化到 0-30）
+      confidence += Math.min(singleItem.confidence / 5, 30);
+    }
+  }
+  
+  // 3. 當前區間熱度（30% 權重）
+  const numSize = getSizeType(num);
+  if (sizeOmissions) {
+    // 如果該區間遺漏期數多，增加該區間號碼的信心值
+    let omissionBonus = 0;
+    if (numSize === "small" && sizeOmissions.small >= 5) {
+      omissionBonus = Math.min(sizeOmissions.small * 2, 20);
+    } else if (numSize === "mid" && sizeOmissions.mid >= 5) {
+      omissionBonus = Math.min(sizeOmissions.mid * 2, 20);
+    } else if (numSize === "large" && sizeOmissions.large >= 5) {
+      omissionBonus = Math.min(sizeOmissions.large * 2, 20);
+    }
+    confidence += omissionBonus;
+    
+    // 如果標記了熱投區，避開該區的號碼獲得額外加分
+    if (hotZone && numSize !== hotZone && numSize !== "zero") {
+      confidence += 10; // 避開熱投區加分
+    }
+  }
+  
+  return Math.min(confidence, 100); // 限制在 0-100%
+}
+
+/**
+ * 根據熱投區和信心值，給出建議號碼（避開熱投區）
+ */
+function getRecommendedNumbers(
+  records: number[],
+  transitionProbabilities?: Map<number, Map<number, number>>,
+  repeatAnalysis?: { repeated: Array<{ num: number; count: number; positions: number[] }>; singleOccurrence: Array<{ num: number; lastPosition: number; confidence: number }> },
+  sizeOmissions?: { small: number; mid: number; large: number; zero: number },
+  hotZone?: SizeType | null,
+  count: number = 5
+): Array<{ num: number; confidence: number; reason: string }> {
+  const recommendations: Array<{ num: number; confidence: number; reason: string }> = [];
+  
+  // 計算所有號碼的信心值
+  for (let i = 1; i <= 36; i++) {
+    const numSize = getSizeType(i);
+    
+    // 如果標記了熱投區，優先選擇避開該區的號碼
+    if (hotZone && numSize === hotZone) {
+      continue; // 跳過熱投區的號碼
+    }
+    
+    const confidence = calculateConfidence(
+      i,
+      records,
+      transitionProbabilities,
+      repeatAnalysis,
+      sizeOmissions,
+      hotZone
+    );
+    
+    let reason = "";
+    if (hotZone && numSize !== hotZone) {
+      reason = `避開${hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區`;
+    } else if (sizeOmissions) {
+      if (numSize === "small" && sizeOmissions.small >= 5) {
+        reason = `小區遺漏${sizeOmissions.small}期`;
+      } else if (numSize === "mid" && sizeOmissions.mid >= 5) {
+        reason = `中區遺漏${sizeOmissions.mid}期`;
+      } else if (numSize === "large" && sizeOmissions.large >= 5) {
+        reason = `大區遺漏${sizeOmissions.large}期`;
+      }
+    }
+    
+    recommendations.push({ num: i, confidence, reason });
+  }
+  
+  // 按信心值降序排序，取前 count 個
+  return recommendations
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, count);
+}
+
 export default function App() {
   const numbers1to36 = useMemo(() => Array.from({ length: 36 }, (_, i) => i + 1), []);
   const [records, setRecords] = useState<number[]>([]);
   const [lastClicked, setLastClicked] = useState<number | null>(null);
   const [zeroAlertThreshold, setZeroAlertThreshold] = useState<number>(120); // 自定義門檻，預設 120 期
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null); // 選中的號碼（用於顯示接續關聯表）
+  const [fastWindowMode, setFastWindowMode] = useState<boolean>(false); // 快窗模式：false = 穩健模式（30期），true = 靈敏模式（8期）
+  const [hotZone, setHotZone] = useState<SizeType | null>(null); // 標記的熱投區（大/中/小）
 
   const addRecord = (n: number) => {
     setRecords((prev) => [n, ...prev]);
@@ -766,6 +987,53 @@ export default function App() {
   const repeatAnalysis = useMemo(() => {
     return checkRepeats(records, transitionProbabilities);
   }, [records, transitionProbabilities]);
+
+  // 區間遺漏監控
+  const sizeOmissions = useMemo(() => {
+    return calculateSizeOmissions(records);
+  }, [records]);
+
+  // 區間失控預警：如果某一區連續超過 8 期未出現
+  const sizeOmissionAlerts = useMemo(() => {
+    const alerts: Array<{ size: SizeType; omitCount: number }> = [];
+    if (sizeOmissions.small > 8) alerts.push({ size: "small", omitCount: sizeOmissions.small });
+    if (sizeOmissions.mid > 8) alerts.push({ size: "mid", omitCount: sizeOmissions.mid });
+    if (sizeOmissions.large > 8) alerts.push({ size: "large", omitCount: sizeOmissions.large });
+    if (sizeOmissions.zero > 8) alerts.push({ size: "zero", omitCount: sizeOmissions.zero });
+    return alerts;
+  }, [sizeOmissions]);
+
+  // 快窗模式：穩健模式（30期）vs 靈敏模式（8期）
+  const windowSize = fastWindowMode ? 8 : 30;
+
+  // 計算區間分佈（用於防禦性 0 預警）
+  const sizeDistribution = useMemo(() => {
+    return calculateSizeDistribution(records, windowSize);
+  }, [records, windowSize]);
+
+  // 防禦性 0 預警：當分佈極度不均時，調高 0 的預期機率
+  const defensiveZeroAlert = useMemo(() => {
+    if (sizeDistribution.isUnbalanced && sizeDistribution.dominantSize) {
+      return {
+        active: true,
+        dominantSize: sizeDistribution.dominantSize,
+        zeroBoost: 15, // 額外增加 15% 的 0 機率
+      };
+    }
+    return { active: false, dominantSize: null, zeroBoost: 0 };
+  }, [sizeDistribution]);
+
+  // 根據熱投區和信心值，給出建議號碼
+  const recommendedNumbers = useMemo(() => {
+    return getRecommendedNumbers(
+      records,
+      transitionProbabilities,
+      repeatAnalysis,
+      sizeOmissions,
+      hotZone,
+      5
+    );
+  }, [records, transitionProbabilities, repeatAnalysis, sizeOmissions, hotZone]);
 
   // 0 號預警：檢查當前號碼是否與 0 有強烈關聯
   const zeroWarning = useMemo(() => {
@@ -1021,11 +1289,113 @@ export default function App() {
             </div>
           )}
 
+          {/* 區間遺漏監控和快窗模式 */}
+          {records.length > 0 && (
+            <div className="omission-tracking-panel">
+              <div className="prediction-title">
+                區間遺漏監控
+                <button
+                  className={`window-mode-toggle ${fastWindowMode ? "fast" : "stable"}`}
+                  onClick={() => setFastWindowMode(!fastWindowMode)}
+                  title={fastWindowMode ? "切換到穩健模式（30期）" : "切換到靈敏模式（8期）"}
+                >
+                  {fastWindowMode ? "靈敏模式（8期）" : "穩健模式（30期）"}
+                </button>
+              </div>
+              
+              <div className="omission-stats">
+                <div className={`omission-item ${sizeOmissions.small > 8 ? "alert" : ""}`}>
+                  <span className="omission-label">小區：</span>
+                  <span className="omission-count">{sizeOmissions.small} 期未出</span>
+                  {sizeOmissions.small > 8 && <span className="alert-badge">⚠️ 失控</span>}
+                </div>
+                <div className={`omission-item ${sizeOmissions.mid > 8 ? "alert" : ""}`}>
+                  <span className="omission-label">中區：</span>
+                  <span className="omission-count">{sizeOmissions.mid} 期未出</span>
+                  {sizeOmissions.mid > 8 && <span className="alert-badge">⚠️ 失控</span>}
+                </div>
+                <div className={`omission-item ${sizeOmissions.large > 8 ? "alert" : ""}`}>
+                  <span className="omission-label">大區：</span>
+                  <span className="omission-count">{sizeOmissions.large} 期未出</span>
+                  {sizeOmissions.large > 8 && <span className="alert-badge">⚠️ 失控</span>}
+                </div>
+                <div className={`omission-item ${sizeOmissions.zero > 8 ? "alert" : ""}`}>
+                  <span className="omission-label">0：</span>
+                  <span className="omission-count">{sizeOmissions.zero} 期未出</span>
+                  {sizeOmissions.zero > 8 && <span className="alert-badge">⚠️ 失控</span>}
+                </div>
+              </div>
+
+              {/* 防禦性 0 預警 */}
+              {defensiveZeroAlert.active && (
+                <div className="defensive-zero-alert">
+                  <div className="warning-icon">🛡️</div>
+                  <div className="warning-text">
+                    <strong>{defensiveZeroAlert.dominantSize === "small" ? "小" : defensiveZeroAlert.dominantSize === "mid" ? "中" : "大"}</strong>
+                    區佔比超過 60%，建議提高 <strong>0</strong> 的預期機率 +{defensiveZeroAlert.zeroBoost}%
+                  </div>
+                </div>
+              )}
+
+              {/* 熱投區標記按鈕 */}
+              <div className="hot-zone-buttons">
+                <div className="hot-zone-label">標記熱投區：</div>
+                <button
+                  className={`hot-zone-btn ${hotZone === "small" ? "active" : ""}`}
+                  onClick={() => setHotZone(hotZone === "small" ? null : "small")}
+                >
+                  小 (1-12)
+                </button>
+                <button
+                  className={`hot-zone-btn ${hotZone === "mid" ? "active" : ""}`}
+                  onClick={() => setHotZone(hotZone === "mid" ? null : "mid")}
+                >
+                  中 (13-24)
+                </button>
+                <button
+                  className={`hot-zone-btn ${hotZone === "large" ? "active" : ""}`}
+                  onClick={() => setHotZone(hotZone === "large" ? null : "large")}
+                >
+                  大 (25-36)
+                </button>
+                {hotZone && (
+                  <button
+                    className="hot-zone-btn clear"
+                    onClick={() => setHotZone(null)}
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+
+              {/* 建議號碼（避開熱投區） */}
+              {hotZone && recommendedNumbers.length > 0 && (
+                <div className="recommended-numbers">
+                  <div className="section-subtitle">建議號碼（避開{hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區）</div>
+                  <div className="recommended-list">
+                    {recommendedNumbers.map((item) => (
+                      <div key={item.num} className="recommended-item">
+                        <div className={`recommended-number ${numberColor(item.num)}`}>{item.num}</div>
+                        <div className="recommended-confidence">信心值: {item.confidence.toFixed(1)}%</div>
+                        {item.reason && <div className="recommended-reason">{item.reason}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 大小預測：下一期大中小的機率比例 */}
           {sizePrediction && records.length > 0 && (
             <div className="size-prediction-panel">
               <div className="prediction-title">
                 大小預測（馬可夫鏈，240期）
+                {defensiveZeroAlert.active && (
+                  <span className="zero-boost-indicator">
+                    +{defensiveZeroAlert.zeroBoost}% 0 機率
+                  </span>
+                )}
                 <span className="current-size-label">
                   當前：{sizeTag(records[0])}
                 </span>
@@ -1070,9 +1440,12 @@ export default function App() {
                     <div className="size-bar-container">
                       <div 
                         className="size-bar zero" 
-                        style={{ width: `${sizePrediction.zero}%` }}
+                        style={{ width: `${Math.min(sizePrediction.zero + defensiveZeroAlert.zeroBoost, 100)}%` }}
                       >
-                        <span className="size-bar-value">{sizePrediction.zero.toFixed(1)}%</span>
+                        <span className="size-bar-value">
+                          {sizePrediction.zero.toFixed(1)}%
+                          {defensiveZeroAlert.active && ` (+${defensiveZeroAlert.zeroBoost}%)`}
+                        </span>
                       </div>
                     </div>
                   </div>
