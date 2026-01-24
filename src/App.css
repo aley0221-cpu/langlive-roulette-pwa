@@ -1302,6 +1302,77 @@ body{
   text-shadow: 0 0 8px rgba(198,58,58,.8);
 }
 
+/* 0 號預警等級系統 */
+.zero-alert-level-panel{
+  margin: 8px 0;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: pulse 2s infinite;
+}
+
+.zero-alert-level-panel.level-1{
+  background: linear-gradient(180deg, rgba(242,211,138,.25), rgba(183,133,47,.15));
+  border: 2px solid rgba(242,211,138,.5);
+}
+
+.zero-alert-level-panel.level-2{
+  background: linear-gradient(180deg, rgba(255,165,0,.3), rgba(200,100,0,.2));
+  border: 2px solid rgba(255,165,0,.6);
+  box-shadow: 0 0 12px rgba(255,165,0,.4);
+}
+
+.zero-alert-level-panel.level-3{
+  background: linear-gradient(180deg, rgba(198,58,58,.4), rgba(110,18,18,.3));
+  border: 3px solid rgba(198,58,58,.8);
+  box-shadow: 0 0 20px rgba(198,58,58,.6);
+  animation: pulse 1s infinite;
+}
+
+.alert-level-icon{
+  font-size: 28px;
+  flex-shrink: 0;
+  animation: pulse 1.5s infinite;
+}
+
+.alert-level-content{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alert-level-title{
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(255,255,255,.95);
+  text-shadow: 0 0 8px rgba(255,255,255,.5);
+}
+
+.zero-alert-level-panel.level-3 .alert-level-title{
+  color: rgba(255,150,150,1);
+  text-shadow: 0 0 12px rgba(198,58,58,.8);
+  font-size: 14px;
+}
+
+.alert-level-text{
+  font-size: 11px;
+  color: rgba(255,255,255,.9);
+  line-height: 1.4;
+}
+
+.alert-level-text strong{
+  color: rgba(255,200,200,1);
+  text-shadow: 0 0 6px rgba(198,58,58,.6);
+}
+
+.zero-alert-level-panel.level-3 .alert-level-text strong{
+  color: rgba(255,100,100,1);
+  text-shadow: 0 0 10px rgba(198,58,58,.8);
+}
+
 /* 選中狀態 */
 .ball.selected,
 .recentRow.selected{
