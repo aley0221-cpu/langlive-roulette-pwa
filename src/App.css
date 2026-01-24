@@ -689,6 +689,158 @@ body{
   text-shadow: 0 1px 3px rgba(0,0,0,.5);
 }
 
+/* 單次出現候選名單（整合到預測面板） */
+.single-occurrence-section{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(242,211,138,.15);
+}
+
+.section-subtitle{
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.candidate-numbers{
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.candidate-item{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(0,0,0,.2);
+  border: 1px solid rgba(242,211,138,.15);
+  min-width: 50px;
+}
+
+.candidate-number{
+  font-size: 18px;
+  font-weight: 900;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(242,211,138,.3);
+}
+
+.candidate-number.red{
+  background: linear-gradient(180deg, rgba(198,58,58,.8), rgba(110,18,18,.8));
+  color: rgba(255,255,255,.95);
+}
+
+.candidate-number.black{
+  background: linear-gradient(180deg, rgba(30,30,40,.8), rgba(11,11,15,.9));
+  color: rgba(255,255,255,.95);
+}
+
+.candidate-number.green{
+  background: linear-gradient(180deg, rgba(43,198,107,.8), rgba(11,106,58,.9));
+  color: rgba(255,255,255,.95);
+}
+
+.candidate-position{
+  font-size: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* 重複分析面板 */
+.repeat-analysis-panel{
+  margin: 8px 0;
+  border-radius: 14px;
+  padding: 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.22));
+  border: 1px solid rgba(242,211,138,.22);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+}
+
+.repeat-section{
+  margin-bottom: 12px;
+}
+
+.repeat-numbers{
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.repeat-item{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.25));
+  border: 1px solid rgba(242,211,138,.25);
+  min-width: 80px;
+}
+
+.repeat-number{
+  font-size: 24px;
+  font-weight: 900;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(242,211,138,.4);
+}
+
+.repeat-number.red{
+  background: linear-gradient(180deg, rgba(198,58,58,.95), rgba(110,18,18,.95));
+  color: rgba(255,255,255,.95);
+}
+
+.repeat-number.black{
+  background: linear-gradient(180deg, rgba(30,30,40,.95), rgba(11,11,15,.98));
+  color: rgba(255,255,255,.95);
+}
+
+.repeat-number.green{
+  background: linear-gradient(180deg, rgba(43,198,107,.95), rgba(11,106,58,.98));
+  color: rgba(255,255,255,.95);
+}
+
+.repeat-count{
+  font-size: 11px;
+  color: rgba(242,211,138,.9);
+  font-weight: 700;
+}
+
+.repeat-positions{
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.repeat-chart-container{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(242,211,138,.15);
+}
+
+.no-repeat-message{
+  text-align: center;
+  padding: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* 0 號預警面板 */
 .zero-warning-panel{
   margin: 8px 0;
@@ -899,5 +1051,48 @@ body{
 
   .panel {
     padding: 6px;
+  }
+
+  /* 重複分析面板響應式 */
+  .repeat-analysis-panel {
+    padding: 8px;
+  }
+
+  .repeat-item {
+    min-width: 70px;
+    padding: 6px;
+  }
+
+  .repeat-number {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .repeat-count {
+    font-size: 10px;
+  }
+
+  .repeat-positions {
+    font-size: 8px;
+  }
+
+  .candidate-item {
+    min-width: 45px;
+    padding: 4px;
+  }
+
+  .candidate-number {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+
+  .candidate-position {
+    font-size: 7px;
+  }
+
+  .repeat-chart-container .chart-container {
+    height: 150px !important;
   }
 }

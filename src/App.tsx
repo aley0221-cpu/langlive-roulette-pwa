@@ -607,6 +607,11 @@ export default function App() {
     return analyzeZeroAssociations(records);
   }, [records]);
 
+  // 重複分析：分析最近 15 筆數據的重複情況
+  const repeatAnalysis = useMemo(() => {
+    return checkRepeats(records);
+  }, [records]);
+
   // 0 號預警：檢查當前號碼是否與 0 有強烈關聯
   const zeroWarning = useMemo(() => {
     if (records.length === 0) return null;
@@ -784,6 +789,21 @@ export default function App() {
                   </div>
                 ))}
               </div>
+              
+              {/* 單次出現候選名單（整合到預測面板） */}
+              {repeatAnalysis.singleOccurrence.length > 0 && (
+                <div className="single-occurrence-section">
+                  <div className="section-subtitle">近期可能重複（僅出現一次）</div>
+                  <div className="candidate-numbers">
+                    {repeatAnalysis.singleOccurrence.slice(0, 6).map((item) => (
+                      <div key={item.num} className="candidate-item">
+                        <div className={`candidate-number ${numberColor(item.num)}`}>{item.num}</div>
+                        <div className="candidate-position">第 {item.lastPosition + 1} 期</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -854,6 +874,119 @@ export default function App() {
               <div className="warning-text">
                 0 號預警：當前號碼 <strong>{zeroWarning.number}</strong> 後出現 0 的機率為 <strong>{zeroWarning.probability.toFixed(1)}%</strong>
               </div>
+            </div>
+          )}
+
+          {/* 重複分析面板 */}
+          {records.length >= 2 && (
+            <div className="repeat-analysis-panel">
+              <div className="prediction-title">重複分析（最近 15 期）</div>
+              
+              {/* 重複號碼列表 */}
+              {repeatAnalysis.repeated.length > 0 && (
+                <div className="repeat-section">
+                  <div className="section-subtitle">已重複號碼</div>
+                  <div className="repeat-numbers">
+                    {repeatAnalysis.repeated.map((item) => (
+                      <div key={item.num} className="repeat-item">
+                        <div className={`repeat-number ${numberColor(item.num)}`}>{item.num}</div>
+                        <div className="repeat-count">出現 {item.count} 次</div>
+                        <div className="repeat-positions">
+                          位置: {item.positions.map(p => `#${p + 1}`).join(', ')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 重複模式視覺化圖表 */}
+              {repeatAnalysis.repeated.length > 0 && (
+                <div className="repeat-chart-container">
+                  <div className="section-subtitle">重複頻率圖表</div>
+                  <div className="chart-container" style={{ height: '180px' }}>
+                    <Bar
+                      data={{
+                        labels: repeatAnalysis.repeated.map(item => item.num.toString()),
+                        datasets: [
+                          {
+                            label: '出現次數',
+                            data: repeatAnalysis.repeated.map(item => item.count),
+                            backgroundColor: repeatAnalysis.repeated.map(item => {
+                              const color = numberColor(item.num);
+                              if (color === 'red') return 'rgba(198, 58, 58, 0.8)';
+                              if (color === 'black') return 'rgba(30, 30, 40, 0.8)';
+                              return 'rgba(43, 198, 107, 0.8)';
+                            }),
+                            borderColor: repeatAnalysis.repeated.map(item => {
+                              const color = numberColor(item.num);
+                              if (color === 'red') return 'rgba(198, 58, 58, 1)';
+                              if (color === 'black') return 'rgba(30, 30, 40, 1)';
+                              return 'rgba(43, 198, 107, 1)';
+                            }),
+                            borderWidth: 2,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: false,
+                          },
+                          tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'rgba(242, 211, 138, 1)',
+                            bodyColor: 'rgba(255, 255, 255, 0.9)',
+                            borderColor: 'rgba(242, 211, 138, 0.3)',
+                            borderWidth: 1,
+                            callbacks: {
+                              label: function(context) {
+                                const index = context.dataIndex;
+                                const item = repeatAnalysis.repeated[index];
+                                return [
+                                  `號碼: ${item.num}`,
+                                  `出現次數: ${item.count}`,
+                                  `位置: ${item.positions.map(p => `#${p + 1}`).join(', ')}`
+                                ];
+                              },
+                            },
+                          },
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              color: 'rgba(242, 211, 138, 0.7)',
+                              font: { size: 10 },
+                            },
+                            grid: {
+                              color: 'rgba(242, 211, 138, 0.1)',
+                            },
+                          },
+                          x: {
+                            ticks: {
+                              color: 'rgba(242, 211, 138, 0.7)',
+                              font: { size: 11, weight: 'bold' },
+                            },
+                            grid: {
+                              display: false,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 如果沒有重複號碼，顯示提示 */}
+              {repeatAnalysis.repeated.length === 0 && (
+                <div className="no-repeat-message">
+                  <div className="muted">最近 15 期沒有重複號碼</div>
+                </div>
+              )}
             </div>
           )}
 
