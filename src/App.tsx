@@ -324,6 +324,7 @@ export default function App() {
     
     const miss = zeroIndices.length === 0 ? records.length : zeroIndices[0];
     
+    // 計算平均間隔（所有歷史數據）
     let avgGap: number | null = null;
     if (zeroIndices.length >= 2) {
       let sum = 0;
@@ -333,14 +334,34 @@ export default function App() {
       avgGap = sum / (zeroIndices.length - 1);
     }
     
-    // 數學期望值：37 期出現一次 0（輪盤有 37 個號碼）
-    const expectedGap = 37;
+    // 期望值計算：基於過去 120 期的實際數據
+    // 如果過去 120 期有足夠的 0 出現，使用實際平均間隔
+    // 否則使用理論期望值（37 期，因為輪盤有 37 個號碼）
+    const last120 = records.slice(0, 120);
+    const zeroIndices120: number[] = [];
+    for (let i = 0; i < last120.length; i++) {
+      if (last120[i] === 0) zeroIndices120.push(i);
+    }
+    
+    let expectedGap: number;
+    if (zeroIndices120.length >= 2) {
+      // 計算過去 120 期的平均間隔
+      let sum = 0;
+      for (let i = 0; i < zeroIndices120.length - 1; i++) {
+        sum += zeroIndices120[i + 1] - zeroIndices120[i];
+      }
+      expectedGap = Math.round(sum / (zeroIndices120.length - 1));
+    } else {
+      // 數據不足時，使用理論期望值：37 期出現一次 0（輪盤有 37 個號碼）
+      expectedGap = 37;
+    }
     
     return {
       miss,
       avgGap: avgGap === null ? null : Math.round(avgGap),
       zeroCount: zeroIndices.length,
       expectedGap,
+      zeroCount120: zeroIndices120.length, // 過去 120 期的 0 出現次數
     };
   }, [records]);
 
