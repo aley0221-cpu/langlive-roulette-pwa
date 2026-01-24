@@ -399,6 +399,72 @@ function calculateHotColdNumbers(
   return { hot, cold };
 }
 
+/**
+ * 分析最近 15 筆數據的重複情況
+ * @param records 完整的記錄數組（最新的在前面）
+ * @returns 重複號碼列表和僅出現一次且最可能在近期重複的候選名單
+ */
+function checkRepeats(records: number[]): {
+  repeated: Array<{ num: number; count: number; positions: number[] }>;
+  singleOccurrence: Array<{ num: number; lastPosition: number }>;
+} {
+  // 取最近 15 筆數據
+  const recent15 = records.slice(0, 15);
+  
+  // 統計每個號碼的出現次數和位置
+  const numberStats = new Map<
+    number,
+    { count: number; positions: number[] }
+  >();
+  
+  for (let i = 0; i < recent15.length; i++) {
+    const num = recent15[i];
+    if (!numberStats.has(num)) {
+      numberStats.set(num, { count: 0, positions: [] });
+    }
+    const stats = numberStats.get(num)!;
+    stats.count++;
+    stats.positions.push(i); // i 是位置索引（0 = 最新，14 = 最舊）
+  }
+  
+  // 找出重複的號碼（出現 2 次或以上）
+  const repeated: Array<{ num: number; count: number; positions: number[] }> = [];
+  for (const [num, stats] of numberStats.entries()) {
+    if (stats.count >= 2) {
+      repeated.push({
+        num,
+        count: stats.count,
+        positions: stats.positions,
+      });
+    }
+  }
+  
+  // 按出現次數降序排序，次數相同時按最新位置排序
+  repeated.sort((a, b) => {
+    if (a.count !== b.count) return b.count - a.count;
+    // 次數相同時，比較最新出現的位置（位置越小 = 越新）
+    const aLatest = Math.min(...a.positions);
+    const bLatest = Math.min(...b.positions);
+    return aLatest - bLatest;
+  });
+  
+  // 找出僅出現一次的號碼（最可能在近期重複的候選）
+  const singleOccurrence: Array<{ num: number; lastPosition: number }> = [];
+  for (const [num, stats] of numberStats.entries()) {
+    if (stats.count === 1) {
+      singleOccurrence.push({
+        num,
+        lastPosition: stats.positions[0], // 只出現一次，所以只有一個位置
+      });
+    }
+  }
+  
+  // 按位置排序（位置越小 = 越新 = 越可能在近期重複）
+  singleOccurrence.sort((a, b) => a.lastPosition - b.lastPosition);
+  
+  return { repeated, singleOccurrence };
+}
+
 export default function App() {
   const numbers1to36 = useMemo(() => Array.from({ length: 36 }, (_, i) => i + 1), []);
   const [records, setRecords] = useState<number[]>([]);
