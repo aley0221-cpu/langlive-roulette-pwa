@@ -81,6 +81,160 @@ function calculateNumberHeat(records: number[], period: number = 50): Map<number
 }
 
 /**
+ * 建立馬可夫鏈轉移矩陣
+ * 統計當號碼 A 出現後，下一個數字是 B 的次數
+ */
+type TransitionMatrix = Map<number, Map<number, number>>;
+
+function buildTransitionMatrix(records: number[]): TransitionMatrix {
+  const matrix: TransitionMatrix = new Map();
+  
+  // 初始化所有號碼（0-36）的轉移矩陣
+  for (let i = 0; i <= 36; i++) {
+    matrix.set(i, new Map<number, number>());
+  }
+  
+  // 遍歷歷史記錄，建立轉移關係（從後往前，因為 records[0] 是最新的）
+  for (let i = records.length - 1; i > 0; i--) {
+    const currentNum = records[i];      // 當前號碼
+    const nextNum = records[i - 1];     // 下一期號碼（時間上更早，但陣列中更前面）
+    
+    const transitions = matrix.get(currentNum);
+    if (transitions) {
+      const count = transitions.get(nextNum) || 0;
+      transitions.set(nextNum, count + 1);
+    }
+  }
+  
+  return matrix;
+}
+
+/**
+ * 計算轉移機率（將次數轉換為百分比）
+ */
+function calculateTransitionProbabilities(matrix: TransitionMatrix): Map<number, Map<number, number>> {
+  const probabilities: Map<number, Map<number, number>> = new Map();
+  
+  for (const [fromNum, transitions] of matrix.entries()) {
+    const probMap = new Map<number, number>();
+    
+    // 計算總次數
+    let total = 0;
+    for (const count of transitions.values()) {
+      total += count;
+    }
+    
+    // 轉換為機率（百分比）
+    if (total > 0) {
+      for (const [toNum, count] of transitions.entries()) {
+        probMap.set(toNum, (count / total) * 100);
+      }
+    }
+    
+    probabilities.set(fromNum, probMap);
+  }
+  
+  return probabilities;
+}
+
+/**
+ * 計算全局出現頻率（過去 100 期）
+ */
+function calculateGlobalFrequencies(records: number[]): Map<number, number> {
+  const frequencies = new Map<number, number>();
+  const last100 = records.slice(0, 100);
+  
+  // 初始化所有號碼
+  for (let i = 0; i <= 36; i++) {
+    frequencies.set(i, 0);
+  }
+  
+  // 統計出現次數
+  for (const num of last100) {
+    frequencies.set(num, (frequencies.get(num) || 0) + 1);
+  }
+  
+  // 轉換為百分比
+  const total = last100.length || 1;
+  for (const [num, count] of frequencies.entries()) {
+    frequencies.set(num, (count / total) * 100);
+  }
+  
+  return frequencies;
+}
+
+/**
+ * 預測下期號碼（使用預測得分公式）
+ * 預測得分 = (全局出現頻率 * 40%) + (馬可夫鏈轉移機率 * 60%)
+ */
+function predictNextNumbers(
+  lastNumber: number,
+  transitionProbs: Map<number, Map<number, number>>,
+  globalFreqs: Map<number, number>,
+  topN: number = 3
+): Array<{ num: number; score: number; markovProb: number; globalFreq: number }> {
+  const predictions: Array<{ num: number; score: number; markovProb: number; globalFreq: number }> = [];
+  
+  // 獲取當前號碼的轉移機率
+  const transitions = transitionProbs.get(lastNumber) || new Map();
+  
+  // 計算所有號碼的預測得分
+  for (let i = 0; i <= 36; i++) {
+    const markovProb = transitions.get(i) || 0;  // 馬可夫鏈轉移機率（百分比）
+    const globalFreq = globalFreqs.get(i) || 0;  // 全局出現頻率（百分比）
+    
+    // 預測得分公式
+    const score = (globalFreq * 0.4) + (markovProb * 0.6);
+    
+    predictions.push({
+      num: i,
+      score,
+      markovProb,
+      globalFreq,
+    });
+  }
+  
+  // 按得分排序，返回前 topN 個
+  return predictions
+    .sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.num - b.num; // 得分相同時，號碼小的在前
+    })
+    .slice(0, topN);
+}
+
+/**
+ * 0 的特殊關聯分析
+ * 逆向關聯：當「0」出現時，回頭看它前一期最常出現什麼號碼
+ */
+function analyzeZeroAssociations(records: number[]): {
+  beforeZero: Map<number, number>;  // 0 出現前最常出現的號碼
+  afterNumbers: Map<number, number>; // 哪些號碼後最容易出現 0
+} {
+  const beforeZero = new Map<number, number>();
+  const afterNumbers = new Map<number, number>();
+  
+  // 遍歷記錄，找出 0 出現的位置
+  for (let i = 0; i < records.length; i++) {
+    if (records[i] === 0) {
+      // 逆向關聯：0 出現前一期最常出現的號碼
+      if (i < records.length - 1) {
+        const beforeNum = records[i + 1];
+        beforeZero.set(beforeNum, (beforeZero.get(beforeNum) || 0) + 1);
+      }
+      
+      // 正向關聯：哪些號碼後最容易出現 0
+      if (i > 0) {
+        const afterNum = records[i - 1];
+        afterNumbers.set(afterNum, (afterNumbers.get(afterNum) || 0) + 1);
+      }
+    }
+  }
+  
+  return { beforeZero, afterNumbers };
+}
+
+/**
  * 計算冷熱門號碼（使用權重演算法）
  */
 function calculateHotColdNumbers(records: number[]): { hot: number[]; cold: number[] } {
@@ -129,6 +283,7 @@ export default function App() {
   const [records, setRecords] = useState<number[]>([]);
   const [lastClicked, setLastClicked] = useState<number | null>(null);
   const [zeroAlertThreshold, setZeroAlertThreshold] = useState<number>(37); // 自定義門檻，預設 37（數學期望值）
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(null); // 選中的號碼（用於顯示接續關聯表）
 
   const addRecord = (n: number) => {
     setRecords((prev) => [n, ...prev]);
@@ -199,6 +354,66 @@ export default function App() {
   const hotCold = useMemo(() => {
     return calculateHotColdNumbers(records);
   }, [records]);
+
+  // 建立馬可夫鏈轉移矩陣
+  const transitionMatrix = useMemo(() => {
+    return buildTransitionMatrix(records);
+  }, [records]);
+
+  // 計算轉移機率
+  const transitionProbabilities = useMemo(() => {
+    return calculateTransitionProbabilities(transitionMatrix);
+  }, [transitionMatrix]);
+
+  // 計算全局出現頻率
+  const globalFrequencies = useMemo(() => {
+    return calculateGlobalFrequencies(records);
+  }, [records]);
+
+  // 預測下期號碼（根據最新號碼）
+  const predictions = useMemo(() => {
+    if (records.length === 0) return [];
+    const lastNumber = records[0]; // 最新一期的號碼
+    return predictNextNumbers(lastNumber, transitionProbabilities, globalFrequencies, 3);
+  }, [records, transitionProbabilities, globalFrequencies]);
+
+  // 0 的特殊關聯分析
+  const zeroAssociations = useMemo(() => {
+    return analyzeZeroAssociations(records);
+  }, [records]);
+
+  // 0 號預警：檢查當前號碼是否與 0 有強烈關聯
+  const zeroWarning = useMemo(() => {
+    if (records.length === 0) return null;
+    const lastNumber = records[0];
+    const zeroProb = transitionProbabilities.get(lastNumber)?.get(0) || 0;
+    // 如果轉移機率超過 10%，顯示預警
+    return zeroProb >= 10 ? { number: lastNumber, probability: zeroProb } : null;
+  }, [records, transitionProbabilities]);
+
+  // 選中號碼的接續關聯表（下一把出現機率最高的 5 個號碼）
+  const nextNumbersForSelected = useMemo(() => {
+    if (selectedNumber === null) return [];
+    const transitions = transitionProbabilities.get(selectedNumber) || new Map();
+    const globalFreqs = globalFrequencies;
+    
+    const predictions: Array<{ num: number; score: number; markovProb: number; globalFreq: number }> = [];
+    
+    for (let i = 0; i <= 36; i++) {
+      const markovProb = transitions.get(i) || 0;
+      const globalFreq = globalFreqs.get(i) || 0;
+      const score = (globalFreq * 0.4) + (markovProb * 0.6);
+      
+      predictions.push({ num: i, score, markovProb, globalFreq });
+    }
+    
+    return predictions
+      .sort((a, b) => {
+        if (a.score !== b.score) return b.score - a.score;
+        return a.num - b.num;
+      })
+      .slice(0, 5);
+  }, [selectedNumber, transitionProbabilities, globalFrequencies]);
 
   // 計算過去 100 期的出現頻率（用於 Chart.js）
   const chartData = useMemo(() => {
@@ -308,8 +523,14 @@ export default function App() {
               ) : (
                 balls.map((n, idx) => {
                   const c = numberColor(n);
+                  const isSelected = selectedNumber === n;
                   return (
-                    <div key={`${n}-${idx}`} className={`ball ${c}`}>
+                    <div
+                      key={`${n}-${idx}`}
+                      className={`ball ${c} ${isSelected ? "selected" : ""}`}
+                      onClick={() => setSelectedNumber(isSelected ? null : n)}
+                      style={{ cursor: "pointer" }}
+                    >
                       {n}
                     </div>
                   );
@@ -317,6 +538,39 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* 馬可夫鏈預測：下期最可能的 3 個號碼 */}
+          {predictions.length > 0 && (
+            <div className="prediction-panel">
+              <div className="prediction-title">下期預測（馬可夫鏈）</div>
+              <div className="prediction-numbers">
+                {predictions.map((pred, idx) => (
+                  <div key={pred.num} className="prediction-item">
+                    <div className="prediction-rank">#{idx + 1}</div>
+                    <div className={`prediction-number ${numberColor(pred.num)}`}>{pred.num}</div>
+                    <div className="prediction-score">
+                      <div className="score-label">得分</div>
+                      <div className="score-value">{pred.score.toFixed(2)}</div>
+                    </div>
+                    <div className="prediction-details">
+                      <div className="detail-item">轉移: {pred.markovProb.toFixed(1)}%</div>
+                      <div className="detail-item">頻率: {pred.globalFreq.toFixed(1)}%</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 0 號預警 */}
+          {zeroWarning && (
+            <div className="zero-warning-panel">
+              <div className="warning-icon">⚠️</div>
+              <div className="warning-text">
+                0 號預警：當前號碼 <strong>{zeroWarning.number}</strong> 後出現 0 的機率為 <strong>{zeroWarning.probability.toFixed(1)}%</strong>
+              </div>
+            </div>
+          )}
 
           {/* 功能鍵：復原 / 清空全部（保留你說的中間下方功能） */}
           <div className="actionsRow">
@@ -337,16 +591,24 @@ export default function App() {
                   {recentDisplay.length === 0 ? (
                     <div className="muted">—</div>
                   ) : (
-                    recentDisplay.map((n, idx) => (
-                      <div key={`${n}-${idx}`} className="recentRow compact">
-                        <div className={`dot small ${numberColor(n)}`} />
-                        <div className="recentNum small">{n}</div>
-                        <div className="recentMeta compact">
-                          <span className="pill small">{oddEvenTag(n)}</span>
-                          <span className="pill small">{sizeTag(n)}</span>
+                    recentDisplay.map((n, idx) => {
+                      const isSelected = selectedNumber === n;
+                      return (
+                        <div
+                          key={`${n}-${idx}`}
+                          className={`recentRow compact ${isSelected ? "selected" : ""}`}
+                          onClick={() => setSelectedNumber(isSelected ? null : n)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <div className={`dot small ${numberColor(n)}`} />
+                          <div className="recentNum small">{n}</div>
+                          <div className="recentMeta compact">
+                            <span className="pill small">{oddEvenTag(n)}</span>
+                            <span className="pill small">{sizeTag(n)}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -473,6 +735,133 @@ export default function App() {
                   )}
                 </div>
               </div>
+
+              {/* 接續關聯表：選中號碼的下一把預測 */}
+              {selectedNumber !== null && nextNumbersForSelected.length > 0 && (
+                <div className="panel span2">
+                  <div className="panelTitle">
+                    接續關聯表：號碼 {selectedNumber} 的下一把預測
+                    <button
+                      className="close-btn"
+                      onClick={() => setSelectedNumber(null)}
+                      style={{ marginLeft: "8px", padding: "2px 8px", fontSize: "12px" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="transition-chart-container">
+                    <Bar
+                      data={{
+                        labels: nextNumbersForSelected.map(p => p.num.toString()),
+                        datasets: [
+                          {
+                            label: "預測得分",
+                            data: nextNumbersForSelected.map(p => p.score),
+                            backgroundColor: nextNumbersForSelected.map(p => {
+                              if (p.num === 0) return "rgba(43, 198, 107, 0.8)";
+                              return numberColor(p.num) === "red" 
+                                ? "rgba(198, 58, 58, 0.8)" 
+                                : "rgba(80, 140, 255, 0.8)";
+                            }),
+                            borderColor: nextNumbersForSelected.map(p => {
+                              if (p.num === 0) return "rgba(43, 198, 107, 1)";
+                              return numberColor(p.num) === "red" 
+                                ? "rgba(198, 58, 58, 1)" 
+                                : "rgba(80, 140, 255, 1)";
+                            }),
+                            borderWidth: 1,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: false,
+                          },
+                          tooltip: {
+                            callbacks: {
+                              afterLabel: (context: any) => {
+                                const index = context.dataIndex;
+                                const pred = nextNumbersForSelected[index];
+                                return [
+                                  `轉移機率: ${pred.markovProb.toFixed(1)}%`,
+                                  `全局頻率: ${pred.globalFreq.toFixed(1)}%`,
+                                ];
+                              },
+                            },
+                          },
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: "預測得分",
+                            },
+                          },
+                          x: {
+                            title: {
+                              display: true,
+                              text: "號碼",
+                            },
+                          },
+                        },
+                      }}
+                      height={180}
+                    />
+                  </div>
+                  <div className="transition-details">
+                    {nextNumbersForSelected.map((pred, idx) => (
+                      <div key={pred.num} className="transition-item">
+                        <span className="transition-rank">#{idx + 1}</span>
+                        <span className={`transition-number ${numberColor(pred.num)}`}>{pred.num}</span>
+                        <span className="transition-score">得分: {pred.score.toFixed(2)}</span>
+                        <span className="transition-prob">轉移: {pred.markovProb.toFixed(1)}%</span>
+                        <span className="transition-freq">頻率: {pred.globalFreq.toFixed(1)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 0 的特殊關聯分析 */}
+              {zeroAssociations.afterNumbers.size > 0 && (
+                <div className="panel span2">
+                  <div className="panelTitle">0 號特殊關聯分析</div>
+                  <div className="zero-associations">
+                    <div className="association-block">
+                      <div className="association-label">最容易出現 0 的號碼：</div>
+                      <div className="association-numbers">
+                        {Array.from(zeroAssociations.afterNumbers.entries())
+                          .sort((a, b) => b[1] - a[1])
+                          .slice(0, 5)
+                          .map(([num, count]) => (
+                            <span key={num} className="association-pill">
+                              {num} ({count}次)
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                    {zeroAssociations.beforeZero.size > 0 && (
+                      <div className="association-block">
+                        <div className="association-label">0 出現前最常出現的號碼：</div>
+                        <div className="association-numbers">
+                          {Array.from(zeroAssociations.beforeZero.entries())
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 5)
+                            .map(([num, count]) => (
+                              <span key={num} className="association-pill">
+                                {num} ({count}次)
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

@@ -503,6 +503,243 @@ body{
   position: relative;
 }
 
+/* 馬可夫鏈預測面板 */
+.prediction-panel{
+  margin: 8px 0;
+  border-radius: 14px;
+  padding: 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.22));
+  border: 1px solid rgba(242,211,138,.22);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+}
+
+.prediction-title{
+  font-weight: 900;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: rgba(242,211,138,.9);
+  text-align: center;
+}
+
+.prediction-numbers{
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.prediction-item{
+  flex: 1;
+  min-width: 80px;
+  max-width: 120px;
+  border-radius: 10px;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.25));
+  border: 1px solid rgba(242,211,138,.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.prediction-rank{
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.prediction-number{
+  font-size: 24px;
+  font-weight: 900;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(242,211,138,.4);
+}
+
+.prediction-number.red{
+  background: linear-gradient(180deg, rgba(198,58,58,.95), rgba(110,18,18,.95));
+  color: rgba(255,255,255,.95);
+}
+
+.prediction-number.black{
+  background: linear-gradient(180deg, rgba(30,30,40,.95), rgba(11,11,15,.98));
+  color: rgba(255,255,255,.95);
+}
+
+.prediction-number.green{
+  background: linear-gradient(180deg, rgba(43,198,107,.95), rgba(11,106,58,.98));
+  color: rgba(255,255,255,.95);
+}
+
+.prediction-score{
+  text-align: center;
+}
+
+.score-label{
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.score-value{
+  font-size: 14px;
+  font-weight: 900;
+  color: rgba(242,211,138,.9);
+}
+
+.prediction-details{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.detail-item{
+  font-size: 8px;
+}
+
+/* 0 號預警面板 */
+.zero-warning-panel{
+  margin: 8px 0;
+  border-radius: 12px;
+  padding: 10px;
+  background: linear-gradient(180deg, rgba(198,58,58,.25), rgba(110,18,18,.15));
+  border: 2px solid rgba(198,58,58,.5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: pulse 2s infinite;
+}
+
+.warning-icon{
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.warning-text{
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255,255,255,.95);
+  font-weight: 700;
+}
+
+.warning-text strong{
+  color: rgba(255,200,200,1);
+  text-shadow: 0 0 8px rgba(198,58,58,.8);
+}
+
+/* 選中狀態 */
+.ball.selected,
+.recentRow.selected{
+  border: 2px solid rgba(242,211,138,.8) !important;
+  box-shadow: 0 0 12px rgba(242,211,138,.6) !important;
+  transform: scale(1.05);
+}
+
+/* 接續關聯表 */
+.transition-chart-container{
+  height: 180px;
+  width: 100%;
+  padding: 8px 0;
+  position: relative;
+}
+
+.transition-details{
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transition-item{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(0,0,0,.2);
+  font-size: 11px;
+}
+
+.transition-rank{
+  font-weight: 900;
+  color: var(--muted);
+  min-width: 24px;
+}
+
+.transition-number{
+  font-weight: 900;
+  font-size: 14px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.transition-number.red{ color: var(--redHi); }
+.transition-number.black{ color: #ffffff; }
+.transition-number.green{ color: var(--greenHi); }
+
+.transition-score,
+.transition-prob,
+.transition-freq{
+  flex: 1;
+  text-align: right;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.close-btn{
+  background: rgba(198,58,58,.2);
+  border: 1px solid rgba(198,58,58,.4);
+  border-radius: 4px;
+  color: rgba(255,255,255,.8);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-btn:hover{
+  background: rgba(198,58,58,.3);
+}
+
+/* 0 的特殊關聯分析 */
+.zero-associations{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.association-block{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.association-label{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.association-numbers{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.association-pill{
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(43,198,107,.15);
+  border: 1px solid rgba(43,198,107,.3);
+  color: rgba(43,198,107,.9);
+}
+
 /* ===== 手機螢幕優化（縮小版以適配單頁） ===== */
 @media (max-width: 420px) {
   /* 1–36 數字格 */
