@@ -634,6 +634,44 @@ function checkRepeats(
 }
 
 /**
+ * 檢測跳跳虎模式：最近 5 期內頻繁切換區間
+ * 如果最近 5 期每期都不同區間，視為跳跳虎模式
+ */
+function detectJumpingTigerMode(records: number[]): boolean {
+  const recent5 = records.slice(0, 5);
+  if (recent5.length < 5) return false;
+  
+  const sizes: SizeType[] = [];
+  for (const num of recent5) {
+    const size = getSizeType(num);
+    // 0 不計入區間切換
+    if (size !== "zero") {
+      sizes.push(size);
+    }
+  }
+  
+  // 如果最近 5 期（排除 0）每期都不同區間，視為跳跳虎模式
+  if (sizes.length < 3) return false;
+  
+  // 檢查是否有頻繁切換（至少 3 個不同的區間）
+  const uniqueSizes = new Set(sizes);
+  if (uniqueSizes.size >= 3) {
+    // 檢查是否每期都切換（沒有連續相同的區間）
+    let hasConsecutive = false;
+    for (let i = 0; i < sizes.length - 1; i++) {
+      if (sizes[i] === sizes[i + 1]) {
+        hasConsecutive = true;
+        break;
+      }
+    }
+    // 如果沒有連續相同的區間，且至少有 3 個不同區間，視為跳跳虎模式
+    return !hasConsecutive && uniqueSizes.size >= 3;
+  }
+  
+  return false;
+}
+
+/**
  * 區間遺漏監控：計算大、中、小、0 各自連續多少期沒有出現
  */
 function calculateSizeOmissions(records: number[]): {
@@ -1134,6 +1172,36 @@ export default function App() {
     const threshold = Math.max(zeroStats.expectedGap, zeroAlertThreshold);
     return zeroStats.miss >= threshold;
   }, [zeroStats.miss, zeroStats.expectedGap, zeroAlertThreshold]);
+
+  // 檢測跳跳虎模式（最近 5 期頻繁切換區間）
+  const jumpingTigerMode = useMemo(() => {
+    return detectJumpingTigerMode(records);
+  }, [records]);
+
+  // 0 號預警等級系統
+  const zeroAlertLevel = useMemo(() => {
+    let level = 0; // 0 = 無預警
+    
+    // Level 1: 基本遺漏預警（超過期望值）
+    if (zeroStats.miss >= Math.max(zeroStats.expectedGap, zeroAlertThreshold)) {
+      level = 1;
+    }
+    
+    // Level 2: 區間失控預警（某一區遺漏超過 8 期）
+    if (sizeOmissions.small > 8 || sizeOmissions.mid > 8 || sizeOmissions.large > 8) {
+      level = Math.max(level, 2);
+    }
+    
+    // Level 3: 最高預警（跳跳虎模式 或 某一區遺漏超過 12 期）
+    if (jumpingTigerMode) {
+      level = 3;
+    }
+    if (sizeOmissions.small > 12 || sizeOmissions.mid > 12 || sizeOmissions.large > 12) {
+      level = 3;
+    }
+    
+    return level;
+  }, [zeroStats.miss, zeroStats.expectedGap, zeroAlertThreshold, sizeOmissions, jumpingTigerMode]);
 
   // 建立馬可夫鏈轉移矩陣
   const transitionMatrix = useMemo(() => {
@@ -1762,6 +1830,56 @@ export default function App() {
               <div className="warning-icon">⚠️</div>
               <div className="warning-text">
                 0 號預警：當前號碼 <strong>{zeroWarning.number}</strong> 後出現 0 的機率為 <strong>{zeroWarning.probability.toFixed(1)}%</strong>
+              </div>
+            </div>
+          )}
+
+          {/* 0 號預警等級系統 */}
+          {zeroAlertLevel > 0 && (
+            <div className={`zero-alert-level-panel level-${zeroAlertLevel}`}>
+              <div className="alert-level-icon">
+                {zeroAlertLevel === 3 ? "🚨" : zeroAlertLevel === 2 ? "⚠️" : "🔔"}
+              </div>
+              <div className="alert-level-content">
+                <div className="alert-level-title">
+                  {zeroAlertLevel === 3 ? "Level 3 最高預警" : zeroAlertLevel === 2 ? "Level 2 區間失控" : "Level 1 基本遺漏"}
+                </div>
+                <div className="alert-level-text">
+                  {zeroAlertLevel === 3 && (
+                    <>
+                      {jumpingTigerMode && (
+                        <div>
+                          <strong>跳跳虎模式啟動：</strong>最近 5 期頻繁切換區間
+                        </div>
+                      )}
+                      {(sizeOmissions.small > 12 || sizeOmissions.mid > 12 || sizeOmissions.large > 12) && (
+                        <div>
+                          <strong>區間遺漏超過 12 期：</strong>
+                          {sizeOmissions.small > 12 && `小區(${sizeOmissions.small}期) `}
+                          {sizeOmissions.mid > 12 && `中區(${sizeOmissions.mid}期) `}
+                          {sizeOmissions.large > 12 && `大區(${sizeOmissions.large}期)`}
+                        </div>
+                      )}
+                      <div style={{ marginTop: "4px", fontSize: "11px", color: "rgba(255,150,150,1)" }}>
+                        <strong>⚠️ 平台可能準備啟動防呆清空籌碼，強烈建議關注 0 號</strong>
+                      </div>
+                    </>
+                  )}
+                  {zeroAlertLevel === 2 && (
+                    <div>
+                      <strong>區間失控：</strong>
+                      {sizeOmissions.small > 8 && `小區(${sizeOmissions.small}期) `}
+                      {sizeOmissions.mid > 8 && `中區(${sizeOmissions.mid}期) `}
+                      {sizeOmissions.large > 8 && `大區(${sizeOmissions.large}期)`}
+                      ，建議提高 0 的關注度
+                    </div>
+                  )}
+                  {zeroAlertLevel === 1 && (
+                    <div>
+                      <strong>0 號遺漏：</strong>已連續 {zeroStats.miss} 期未出現（期望值：{Math.max(zeroStats.expectedGap, zeroAlertThreshold)} 期）
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
