@@ -909,12 +909,6 @@ body{
   text-align: center;
 }
 
-.repeat-chart-container{
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(242,211,138,.15);
-}
-
 .no-repeat-message{
   text-align: center;
   padding: 16px;
@@ -1171,10 +1165,6 @@ body{
 
   .candidate-position {
     font-size: 7px;
-  }
-
-  .repeat-chart-container .chart-container {
-    height: 150px !important;
   }
 
   /* 紅黑預測面板響應式 */
