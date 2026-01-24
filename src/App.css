@@ -38,6 +38,11 @@ body{
   align-items:flex-start;
   justify-content:center;
   padding:18px 12px 32px;
+  transition: background 0.5s ease;
+}
+
+.page.zero-alert{
+  background: radial-gradient(1200px 700px at 50% 10%, rgba(198, 58, 58, 0.25) 0%, var(--bg) 60%, #07070a 100%) !important;
 }
 
 .tableFrame{
@@ -451,6 +456,51 @@ body{
 
 .tableBottomPad{
   height: 8px;
+}
+
+/* 0 警報樣式 */
+.alert-badge{
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(198, 58, 58, 0.3);
+  border: 1px solid rgba(198, 58, 58, 0.6);
+  border-radius: 4px;
+  font-size: 11px;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.alert-text{
+  color: var(--redHi) !important;
+  text-shadow: 0 0 8px rgba(198, 58, 58, 0.8);
+}
+
+.threshold-input{
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(242, 211, 138, 0.3);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 13px;
+  text-align: center;
+}
+
+.threshold-input:focus{
+  outline: none;
+  border-color: rgba(242, 211, 138, 0.6);
+  box-shadow: 0 0 4px rgba(242, 211, 138, 0.3);
+}
+
+/* Chart.js 容器樣式 */
+.chart-container{
+  height: 200px;
+  width: 100%;
+  padding: 8px 0;
+  position: relative;
 }
 
 /* ===== 手機螢幕優化（縮小版以適配單頁） ===== */
