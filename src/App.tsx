@@ -241,9 +241,6 @@ export default function App() {
                       <span className="hcPill hot">13</span>
                     </div>
                   </div>
-                  <div className="muted tiny">
-                    ※ 以上先做版面示意，你把統計接上去後再替換數字即可
-                  </div>
                 </div>
               </div>
             </div>
