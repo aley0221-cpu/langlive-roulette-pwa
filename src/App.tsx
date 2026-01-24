@@ -893,6 +893,7 @@ function calculateConfidence(
 /**
  * 根據熱投區和信心值，給出建議號碼（避開熱投區）
  * 如果殺數偵測啟動，優先推薦極冷門號或 0
+ * 如果標記了過熱區，該區所有號碼權重降為 0，權重轉移到其他兩區和 0
  */
 function getRecommendedNumbers(
   records: number[],
@@ -901,6 +902,7 @@ function getRecommendedNumbers(
   sizeOmissions?: { small: number; mid: number; large: number; zero: number },
   hotZone?: SizeType | null,
   killZoneDetection?: { isActive: boolean; killZones: Array<{ size: SizeType; frequency: number; expectedFrequency: number }> },
+  overheatedZone?: SizeType | null,
   count: number = 5
 ): Array<{ num: number; confidence: number; reason: string }> {
   // 如果殺數偵測啟動，優先推薦極冷門號或 0
@@ -915,9 +917,15 @@ function getRecommendedNumbers(
       reason: `平台避險啟動，建議 0（避險區：${killZoneDetection.killZones.map(kz => kz.size === "small" ? "小" : kz.size === "mid" ? "中" : "大").join("、")}）`,
     });
     
-    // 推薦極冷門號碼
+    // 推薦極冷門號碼（排除過熱區）
     for (const cold of coldestNumbers) {
       const numSize = getSizeType(cold.num);
+      
+      // 如果該號碼在過熱區，跳過
+      if (overheatedZone && numSize === overheatedZone) {
+        continue;
+      }
+      
       // 如果該號碼在避險區內，額外加分
       const isInKillZone = killZoneDetection.killZones.some(kz => kz.size === numSize);
       
@@ -934,37 +942,95 @@ function getRecommendedNumbers(
   // 正常模式：計算所有號碼的信心值
   const recommendations: Array<{ num: number; confidence: number; reason: string }> = [];
   
-  for (let i = 1; i <= 36; i++) {
-    const numSize = getSizeType(i);
+  // 如果標記了過熱區，優先推薦 0 和其他兩區的號碼
+  if (overheatedZone) {
+    // 優先推薦 0（權重轉移）
+    recommendations.push({
+      num: 0,
+      confidence: 90,
+      reason: `避開${overheatedZone === "small" ? "小" : overheatedZone === "mid" ? "中" : "大"}區過熱，權重轉移`,
+    });
     
-    // 如果標記了熱投區，優先選擇避開該區的號碼
-    if (hotZone && numSize === hotZone) {
-      continue; // 跳過熱投區的號碼
-    }
-    
-    const confidence = calculateConfidence(
-      i,
-      records,
-      transitionProbabilities,
-      repeatAnalysis,
-      sizeOmissions,
-      hotZone
-    );
-    
-    let reason = "";
-    if (hotZone && numSize !== hotZone) {
-      reason = `避開${hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區`;
-    } else if (sizeOmissions) {
-      if (numSize === "small" && sizeOmissions.small >= 5) {
-        reason = `小區遺漏${sizeOmissions.small}期`;
-      } else if (numSize === "mid" && sizeOmissions.mid >= 5) {
-        reason = `中區遺漏${sizeOmissions.mid}期`;
-      } else if (numSize === "large" && sizeOmissions.large >= 5) {
-        reason = `大區遺漏${sizeOmissions.large}期`;
+    // 只計算其他兩區和 0 的號碼
+    for (let i = 1; i <= 36; i++) {
+      const numSize = getSizeType(i);
+      
+      // 跳過過熱區的號碼（權重降為 0）
+      if (numSize === overheatedZone) {
+        continue;
       }
+      
+      // 跳過熱投區的號碼（如果同時標記了熱投區）
+      if (hotZone && numSize === hotZone) {
+        continue;
+      }
+      
+      // 計算信心值，過熱區外的號碼獲得額外加分
+      let confidence = calculateConfidence(
+        i,
+        records,
+        transitionProbabilities,
+        repeatAnalysis,
+        sizeOmissions,
+        hotZone
+      );
+      
+      // 因為過熱區被排除，其他區的號碼獲得額外加分（權重轉移）
+      confidence += 15;
+      
+      let reason = "";
+      if (hotZone && numSize !== hotZone) {
+        reason = `避開${hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區`;
+      } else {
+        reason = `避開${overheatedZone === "small" ? "小" : overheatedZone === "mid" ? "中" : "大"}區過熱`;
+      }
+      
+      if (sizeOmissions) {
+        if (numSize === "small" && sizeOmissions.small >= 5) {
+          reason += `，小區遺漏${sizeOmissions.small}期`;
+        } else if (numSize === "mid" && sizeOmissions.mid >= 5) {
+          reason += `，中區遺漏${sizeOmissions.mid}期`;
+        } else if (numSize === "large" && sizeOmissions.large >= 5) {
+          reason += `，大區遺漏${sizeOmissions.large}期`;
+        }
+      }
+      
+      recommendations.push({ num: i, confidence, reason });
     }
-    
-    recommendations.push({ num: i, confidence, reason });
+  } else {
+    // 沒有過熱區時，正常計算
+    for (let i = 1; i <= 36; i++) {
+      const numSize = getSizeType(i);
+      
+      // 如果標記了熱投區，優先選擇避開該區的號碼
+      if (hotZone && numSize === hotZone) {
+        continue; // 跳過熱投區的號碼
+      }
+      
+      const confidence = calculateConfidence(
+        i,
+        records,
+        transitionProbabilities,
+        repeatAnalysis,
+        sizeOmissions,
+        hotZone
+      );
+      
+      let reason = "";
+      if (hotZone && numSize !== hotZone) {
+        reason = `避開${hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區`;
+      } else if (sizeOmissions) {
+        if (numSize === "small" && sizeOmissions.small >= 5) {
+          reason = `小區遺漏${sizeOmissions.small}期`;
+        } else if (numSize === "mid" && sizeOmissions.mid >= 5) {
+          reason = `中區遺漏${sizeOmissions.mid}期`;
+        } else if (numSize === "large" && sizeOmissions.large >= 5) {
+          reason = `大區遺漏${sizeOmissions.large}期`;
+        }
+      }
+      
+      recommendations.push({ num: i, confidence, reason });
+    }
   }
   
   // 按信心值降序排序，取前 count 個
@@ -981,6 +1047,7 @@ export default function App() {
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null); // 選中的號碼（用於顯示接續關聯表）
   const [fastWindowMode, setFastWindowMode] = useState<boolean>(false); // 快窗模式：false = 穩健模式（30期），true = 靈敏模式（8期）
   const [hotZone, setHotZone] = useState<SizeType | null>(null); // 標記的熱投區（大/中/小）
+  const [overheatedZone, setOverheatedZone] = useState<SizeType | null>(null); // 標記的過熱區（大/中/小），該區所有號碼權重降為 0
 
   const addRecord = (n: number) => {
     setRecords((prev) => [n, ...prev]);
@@ -1188,9 +1255,10 @@ export default function App() {
       sizeOmissions,
       hotZone,
       killZoneDetection,
+      overheatedZone,
       5
     );
-  }, [records, transitionProbabilities, repeatAnalysis, sizeOmissions, hotZone, killZoneDetection]);
+  }, [records, transitionProbabilities, repeatAnalysis, sizeOmissions, hotZone, killZoneDetection, overheatedZone]);
 
   // 0 號預警：檢查當前號碼是否與 0 有強烈關聯
   const zeroWarning = useMemo(() => {
@@ -1564,12 +1632,45 @@ export default function App() {
                 )}
               </div>
 
-              {/* 建議號碼（避開熱投區 或 殺數偵測模式） */}
-              {(hotZone || killZoneDetection.isActive) && recommendedNumbers.length > 0 && (
+              {/* 過熱區標記按鈕（避開平台殺賠區） */}
+              <div className="overheated-zone-buttons">
+                <div className="overheated-zone-label">標記過熱區（權重降為 0）：</div>
+                <button
+                  className={`overheated-zone-btn ${overheatedZone === "small" ? "active" : ""}`}
+                  onClick={() => setOverheatedZone(overheatedZone === "small" ? null : "small")}
+                >
+                  小區過熱
+                </button>
+                <button
+                  className={`overheated-zone-btn ${overheatedZone === "mid" ? "active" : ""}`}
+                  onClick={() => setOverheatedZone(overheatedZone === "mid" ? null : "mid")}
+                >
+                  中區過熱
+                </button>
+                <button
+                  className={`overheated-zone-btn ${overheatedZone === "large" ? "active" : ""}`}
+                  onClick={() => setOverheatedZone(overheatedZone === "large" ? null : "large")}
+                >
+                  大區過熱
+                </button>
+                {overheatedZone && (
+                  <button
+                    className="overheated-zone-btn clear"
+                    onClick={() => setOverheatedZone(null)}
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+
+              {/* 建議號碼（避開熱投區 或 殺數偵測模式 或 過熱區） */}
+              {(hotZone || killZoneDetection.isActive || overheatedZone) && recommendedNumbers.length > 0 && (
                 <div className="recommended-numbers">
                   <div className="section-subtitle">
                     {killZoneDetection.isActive 
                       ? "建議號碼（平台避險模式：極冷門號或 0）"
+                      : overheatedZone
+                      ? `建議號碼（避開${overheatedZone === "small" ? "小" : overheatedZone === "mid" ? "中" : "大"}區過熱，權重轉移至其他兩區和 0）`
                       : `建議號碼（避開${hotZone === "small" ? "小" : hotZone === "mid" ? "中" : "大"}區）`
                     }
                   </div>
