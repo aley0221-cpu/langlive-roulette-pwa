@@ -993,16 +993,6 @@ export default function App() {
     return calculateSizeOmissions(records);
   }, [records]);
 
-  // 區間失控預警：如果某一區連續超過 8 期未出現
-  const sizeOmissionAlerts = useMemo(() => {
-    const alerts: Array<{ size: SizeType; omitCount: number }> = [];
-    if (sizeOmissions.small > 8) alerts.push({ size: "small", omitCount: sizeOmissions.small });
-    if (sizeOmissions.mid > 8) alerts.push({ size: "mid", omitCount: sizeOmissions.mid });
-    if (sizeOmissions.large > 8) alerts.push({ size: "large", omitCount: sizeOmissions.large });
-    if (sizeOmissions.zero > 8) alerts.push({ size: "zero", omitCount: sizeOmissions.zero });
-    return alerts;
-  }, [sizeOmissions]);
-
   // 快窗模式：穩健模式（30期）vs 靈敏模式（8期）
   const windowSize = fastWindowMode ? 8 : 30;
 
