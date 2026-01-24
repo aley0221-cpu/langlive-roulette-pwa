@@ -390,7 +390,7 @@ function predictNextColor(
 }
 
 /**
- * 0 的特殊關聯分析（只分析最近 240 期，滑動窗口）
+ * 0 的特殊關聯分析
  * 逆向關聯：當「0」出現時，回頭看它前一期最常出現什麼號碼
  */
 function analyzeZeroAssociations(records: number[]): {
@@ -400,21 +400,18 @@ function analyzeZeroAssociations(records: number[]): {
   const beforeZero = new Map<number, number>();
   const afterNumbers = new Map<number, number>();
   
-  // 只使用最近 240 期（滑動窗口）
-  const recent240 = records.slice(0, 240);
-  
   // 遍歷記錄，找出 0 出現的位置
-  for (let i = 0; i < recent240.length; i++) {
-    if (recent240[i] === 0) {
-      // 逆向關聯：0 出現前一期最常出現的號碼（時間上更早的，即陣列中索引更大的）
-      if (i < recent240.length - 1) {
-        const beforeNum = recent240[i + 1];
+  for (let i = 0; i < records.length; i++) {
+    if (records[i] === 0) {
+      // 逆向關聯：0 出現前一期最常出現的號碼
+      if (i < records.length - 1) {
+        const beforeNum = records[i + 1];
         beforeZero.set(beforeNum, (beforeZero.get(beforeNum) || 0) + 1);
       }
       
-      // 正向關聯：哪些號碼後最容易出現 0（時間上更早的號碼，之後出現 0）
+      // 正向關聯：哪些號碼後最容易出現 0
       if (i > 0) {
-        const afterNum = recent240[i - 1];
+        const afterNum = records[i - 1];
         afterNumbers.set(afterNum, (afterNumbers.get(afterNum) || 0) + 1);
       }
     }
@@ -504,11 +501,15 @@ function calculateHotColdNumbers(
 /**
  * 分析最近 15 筆數據的重複情況
  * @param records 完整的記錄數組（最新的在前面）
- * @returns 重複號碼列表和僅出現一次且最可能在近期重複的候選名單
+ * @param transitionProbabilities 馬可夫鏈轉移機率（可選）
+ * @returns 重複號碼列表和僅出現一次且最可能在近期重複的候選名單（帶權重/信心值）
  */
-function checkRepeats(records: number[]): {
+function checkRepeats(
+  records: number[],
+  transitionProbabilities?: Map<number, Map<number, number>>
+): {
   repeated: Array<{ num: number; count: number; positions: number[] }>;
-  singleOccurrence: Array<{ num: number; lastPosition: number }>;
+  singleOccurrence: Array<{ num: number; lastPosition: number; confidence: number }>;
 } {
   // 取最近 15 筆數據
   const recent15 = records.slice(0, 15);
@@ -551,18 +552,53 @@ function checkRepeats(records: number[]): {
   });
   
   // 找出僅出現一次的號碼（最可能在近期重複的候選）
-  const singleOccurrence: Array<{ num: number; lastPosition: number }> = [];
+  const singleOccurrence: Array<{ num: number; lastPosition: number; confidence: number }> = [];
+  
+  // 獲取最新一期的號碼（用於計算馬可夫鏈關聯）
+  const lastNumber = records.length > 0 ? records[0] : null;
+  
   for (const [num, stats] of numberStats.entries()) {
     if (stats.count === 1) {
+      const lastPosition = stats.positions[0]; // 只出現一次，所以只有一個位置
+      
+      // 計算信心值（權重）
+      let confidence = 0;
+      
+      // 基礎信心值：位置越新（越小），信心值越高
+      // 位置 0（最新）= 100，位置 14（最舊）= 0
+      const positionScore = ((15 - lastPosition) / 15) * 50; // 最高 50 分
+      confidence += positionScore;
+      
+      // 馬可夫鏈關聯加分：如果這個號碼是上期號碼的強關聯，大幅提升信心值
+      if (lastNumber !== null && transitionProbabilities) {
+        const transitions = transitionProbabilities.get(lastNumber) || new Map();
+        const markovProb = transitions.get(num) || 0;
+        
+        // 如果馬可夫鏈轉移機率 >= 5%，認為是強關聯，給予額外 50 分
+        // 如果 >= 10%，給予額外 100 分（最高）
+        if (markovProb >= 10) {
+          confidence += 100; // 最高權重
+        } else if (markovProb >= 5) {
+          confidence += 50; // 中等權重
+        } else if (markovProb > 0) {
+          confidence += markovProb * 2; // 按機率比例加分
+        }
+      }
+      
       singleOccurrence.push({
         num,
-        lastPosition: stats.positions[0], // 只出現一次，所以只有一個位置
+        lastPosition,
+        confidence, // 信心值（權重）
       });
     }
   }
   
-  // 按位置排序（位置越小 = 越新 = 越可能在近期重複）
-  singleOccurrence.sort((a, b) => a.lastPosition - b.lastPosition);
+  // 按信心值降序排序（信心值越高 = 越可能在近期重複）
+  // 如果信心值相同，按位置排序（位置越小 = 越新）
+  singleOccurrence.sort((a, b) => {
+    if (a.confidence !== b.confidence) return b.confidence - a.confidence;
+    return a.lastPosition - b.lastPosition;
+  });
   
   return { repeated, singleOccurrence };
 }
@@ -726,10 +762,10 @@ export default function App() {
     return analyzeZeroAssociations(records);
   }, [records]);
 
-  // 重複分析：分析最近 15 筆數據的重複情況
+  // 重複分析：分析最近 15 筆數據的重複情況（結合馬可夫鏈關聯）
   const repeatAnalysis = useMemo(() => {
-    return checkRepeats(records);
-  }, [records]);
+    return checkRepeats(records, transitionProbabilities);
+  }, [records, transitionProbabilities]);
 
   // 0 號預警：檢查當前號碼是否與 0 有強烈關聯
   const zeroWarning = useMemo(() => {
@@ -912,14 +948,24 @@ export default function App() {
               {/* 單次出現候選名單（整合到預測面板） */}
               {repeatAnalysis.singleOccurrence.length > 0 && (
                 <div className="single-occurrence-section">
-                  <div className="section-subtitle">近期可能重複（僅出現一次）</div>
+                  <div className="section-subtitle">近期可能重複（僅出現一次，按信心值排序）</div>
                   <div className="candidate-numbers">
-                    {repeatAnalysis.singleOccurrence.slice(0, 6).map((item) => (
-                      <div key={item.num} className="candidate-item">
-                        <div className={`candidate-number ${numberColor(item.num)}`}>{item.num}</div>
-                        <div className="candidate-position">第 {item.lastPosition + 1} 期</div>
-                      </div>
-                    ))}
+                    {repeatAnalysis.singleOccurrence.slice(0, 6).map((item) => {
+                      // 根據信心值決定是否高亮顯示（信心值 >= 100 表示強關聯）
+                      const isHighConfidence = item.confidence >= 100;
+                      return (
+                        <div 
+                          key={item.num} 
+                          className={`candidate-item ${isHighConfidence ? "high-confidence" : ""}`}
+                        >
+                          <div className={`candidate-number ${numberColor(item.num)}`}>{item.num}</div>
+                          <div className="candidate-position">第 {item.lastPosition + 1} 期</div>
+                          <div className="candidate-confidence">
+                            信心值: {item.confidence.toFixed(1)}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -837,6 +837,20 @@ body{
   text-align: center;
 }
 
+.candidate-confidence{
+  font-size: 9px;
+  color: rgba(242,211,138,.8);
+  font-weight: 700;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.candidate-item.high-confidence{
+  border: 2px solid rgba(242,211,138,.6);
+  box-shadow: 0 0 8px rgba(242,211,138,.4);
+  background: linear-gradient(180deg, rgba(242,211,138,.15), rgba(0,0,0,.25));
+}
+
 /* 重複分析面板 */
 .repeat-analysis-panel{
   margin: 8px 0;
