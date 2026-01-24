@@ -322,44 +322,78 @@ function analyzeZeroAssociations(records: number[]): {
 }
 
 /**
- * 計算冷熱門號碼（使用權重演算法）
+ * 計算冷熱門號碼（結合權重演算法 + 馬可夫鏈關聯）
+ * 綜合得分 = (權重演算法得分 × 60%) + (馬可夫鏈轉移機率 × 40%)
  */
-function calculateHotColdNumbers(records: number[]): { hot: number[]; cold: number[] } {
+function calculateHotColdNumbers(
+  records: number[],
+  transitionProbabilities?: Map<number, Map<number, number>>
+): { hot: number[]; cold: number[] } {
   const heatMap = calculateNumberHeat(records, 50);
   
-  // 轉換為陣列並排序（排除 0，因為 0 有專門統計）
-  const numbers: Array<{ num: number; heat: number }> = [];
-  for (let i = 1; i <= 36; i++) {
-    numbers.push({ num: i, heat: heatMap.get(i) || 0 });
+  // 計算馬可夫鏈轉移機率（如果最新號碼存在）
+  const markovScores = new Map<number, number>();
+  if (records.length > 0 && transitionProbabilities) {
+    const lastNumber = records[0]; // 最新一期的號碼
+    const transitions = transitionProbabilities.get(lastNumber) || new Map();
+    
+    // 計算每個號碼的馬可夫鏈轉移機率（從最新號碼轉移到該號碼的機率）
+    for (let i = 0; i <= 36; i++) {
+      const markovProb = transitions.get(i) || 0;
+      markovScores.set(i, markovProb);
+    }
   }
   
-  // 熱門號：權重最高的 4 個
+  // 轉換為陣列並計算綜合得分（排除 0，因為 0 有專門統計）
+  const numbers: Array<{ num: number; heat: number; markovScore: number; combinedScore: number }> = [];
+  for (let i = 1; i <= 36; i++) {
+    const heat = heatMap.get(i) || 0;
+    const markovScore = markovScores.get(i) || 0;
+    
+    // 綜合得分 = (權重演算法得分 × 60%) + (馬可夫鏈轉移機率 × 40%)
+    // 將權重值標準化到 0-100 範圍（假設最大權重約為 0.7，即最近 10 期都出現）
+    const normalizedHeat = (heat / 0.7) * 100; // 標準化到 0-100
+    const combinedScore = (normalizedHeat * 0.6) + (markovScore * 0.4);
+    
+    numbers.push({ 
+      num: i, 
+      heat, 
+      markovScore,
+      combinedScore 
+    });
+  }
+  
+  // 熱門號：綜合得分最高的 4 個
   const hot = numbers
     .sort((a, b) => {
+      if (a.combinedScore !== b.combinedScore) return b.combinedScore - a.combinedScore;
+      // 如果綜合得分相同，優先考慮權重演算法得分
       if (a.heat !== b.heat) return b.heat - a.heat;
-      return a.num - b.num; // 權重相同時，號碼小的在前
+      return a.num - b.num;
     })
     .slice(0, 4)
     .map(x => x.num);
   
-  // 冷門號：權重最低的 4 個（但至少出現過一次）
+  // 冷門號：綜合得分最低的 4 個（但至少出現過一次或馬可夫鏈有數據）
   const cold = numbers
-    .filter(x => x.heat > 0) // 至少出現過一次
+    .filter(x => x.heat > 0 || x.markovScore > 0) // 至少出現過一次或馬可夫鏈有數據
     .sort((a, b) => {
+      if (a.combinedScore !== b.combinedScore) return a.combinedScore - b.combinedScore;
+      // 如果綜合得分相同，優先考慮權重演算法得分（較低）
       if (a.heat !== b.heat) return a.heat - b.heat;
-      return a.num - b.num; // 權重相同時，號碼小的在前
+      return a.num - b.num;
     })
     .slice(0, 4)
     .map(x => x.num);
   
-  // 如果冷門號不足 4 個，用權重為 0 的號碼補齊
+  // 如果冷門號不足 4 個，用綜合得分為 0 的號碼補齊
   if (cold.length < 4) {
-    const zeroHeatNumbers = numbers
-      .filter(x => x.heat === 0)
+    const zeroScoreNumbers = numbers
+      .filter(x => x.combinedScore === 0)
       .sort((a, b) => a.num - b.num)
       .slice(0, 4 - cold.length)
       .map(x => x.num);
-    cold.push(...zeroHeatNumbers);
+    cold.push(...zeroScoreNumbers);
   }
   
   return { hot, cold };
@@ -458,11 +492,6 @@ export default function App() {
     return zeroStats.miss >= threshold;
   }, [zeroStats.miss, zeroStats.expectedGap, zeroAlertThreshold]);
 
-  // 計算冷熱門號碼（使用權重演算法）
-  const hotCold = useMemo(() => {
-    return calculateHotColdNumbers(records);
-  }, [records]);
-
   // 建立馬可夫鏈轉移矩陣
   const transitionMatrix = useMemo(() => {
     return buildTransitionMatrix(records);
@@ -472,6 +501,11 @@ export default function App() {
   const transitionProbabilities = useMemo(() => {
     return calculateTransitionProbabilities(transitionMatrix);
   }, [transitionMatrix]);
+
+  // 計算冷熱門號碼（結合權重演算法 + 馬可夫鏈關聯）
+  const hotCold = useMemo(() => {
+    return calculateHotColdNumbers(records, transitionProbabilities);
+  }, [records, transitionProbabilities]);
 
   // 建立大小轉移矩陣
   const sizeTransitionMatrix = useMemo(() => {
@@ -868,7 +902,7 @@ export default function App() {
               </div>
 
               <div className="panel span2">
-                <div className="panelTitle">冷熱門號統計（權重演算法）</div>
+                <div className="panelTitle">冷熱門號統計（權重演算法 + 馬可夫鏈）</div>
                 <div className="hotCold">
                   <div className="hcBlock">
                     <div className="hcLabel muted">冷門號</div>
